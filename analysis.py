@@ -1,40 +1,31 @@
-from collections import Counter
 import re
+from collections import Counter
 import random
 
+stopwords = [
+"롯데","자이언츠","프로야구","KBO",
+"경기","선수","감독","시즌","구단"
+]
 
-# 키워드 분석
-def extract_keywords(titles):
+def extract_keywords(texts):
 
     words = []
 
-    # 불필요 단어 제거
-    stopwords = [
-        "롯데","자이언츠","프로야구","KBO",
-        "경기","오늘","선수","감독","시즌"
-    ]
+    for t in texts:
 
-    for t in titles:
+        tokens = re.findall(r"[가-힣]{2,}", str(t))
 
-        # 한글 단어 추출
-        w = re.findall(r"[가-힣]{2,}", str(t))
+        for w in tokens:
 
-        for word in w:
+            if w not in stopwords:
 
-            if word not in stopwords:
-
-                words.append(word)
+                words.append(w)
 
     counter = Counter(words)
 
-    common = counter.most_common(10)
-
-    return common
+    return counter.most_common(20)
 
 
-# 롯데 승리 확률 예측 (간단 버전)
 def predict_win():
 
-    win_rate = random.uniform(0.45, 0.65)
-
-    return round(win_rate, 2)
+    return round(random.uniform(0.45,0.65),2)
