@@ -1,6 +1,13 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
+import os
+if not os.path.exists("data/news.csv"):
+    import crawler_news
+    import crawler_article
+import subprocess
+subprocess.run(["python","crawler_news.py"])
+subprocess.run(["python","crawler_article.py"])
 
 from ai_summary import summarize
 from analysis import extract_keywords, predict_win
@@ -185,6 +192,7 @@ with tabs[8]:
     "유튜브 하이라이트",
     "https://www.youtube.com/results?search_query=롯데+자이언츠+하이라이트"
     )
+
 
 
 
