@@ -3,6 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 from ai_summary import summarize
+from analysis import extract_keywords, predict_win
 
 st.set_page_config(page_title="Lotte Baseball Dashboard")
 
@@ -10,11 +11,12 @@ st.title("⚾ LOTTE GIANTS DASHBOARD")
 
 tabs = st.tabs([
 "오늘 경기",
+"실시간 스코어",
 "뉴스",
 "AI 뉴스 요약",
-"선수 뉴스",
+"뉴스 키워드",
 "선수 기록",
-"분석",
+"롯데 분석",
 "영상"
 ])
 
@@ -38,8 +40,35 @@ with tabs[0]:
 
         st.write("경기 없음")
 
-# 뉴스
+#실시간 스코어
 with tabs[1]:
+
+    st.header("⚾ 실시간 경기")
+
+    try:
+
+        df = pd.read_csv("score.csv")
+
+        lotte = df[df["match"].str.contains("롯데")]
+
+        if len(lotte)==0:
+
+            st.write("오늘 경기 없음")
+
+        else:
+
+            for _,r in lotte.iterrows():
+
+                st.subheader(r["match"])
+                st.write("스코어:", r["score"])
+
+    except:
+
+        st.write("스코어 데이터 없음")
+
+
+# 뉴스
+with tabs[2]:
 
     st.header("롯데 뉴스")
 
@@ -56,7 +85,7 @@ with tabs[1]:
         st.write("뉴스 없음")
 
 # AI 요약
-with tabs[2]:
+with tabs[3]:
 
     st.header("AI 뉴스 요약")
 
@@ -70,38 +99,36 @@ with tabs[2]:
 
         st.write(summary)
 
+        st.link_button("기사보기", r["link"])
+
     except:
 
         st.write("요약 데이터 없음")
 
-# 선수 뉴스
-players = [
-"한동희",
-"윤동희",
-"김원중",
-"엘빈 로드리게스",
-"제레미 비슬리"
-    
-]
 
-with tabs[3]:
+# 뉴스 키워드 분석
+with tabs[4]:
+
+    st.header("뉴스 키워드 분석")
 
     df = pd.read_csv("news.csv")
 
-    for p in players:
+    keywords = extract_keywords(df["title"])
 
-        st.subheader(p)
+    words = [k[0] for k in keywords]
+    counts = [k[1] for k in keywords]
 
-        result = df[df["title"].str.contains(p, na=False)]
+    fig, ax = plt.subplots()
 
-        for _,r in result.iterrows():
+    ax.bar(words, counts)
 
-            st.write(r["title"])
-            st.link_button("기사", r["link"])
+    ax.set_title("롯데 뉴스 키워드")
+
+    st.pyplot(fig)
 
 
 # 선수 기록
-with tabs[4]:
+with tabs[5]:
 
     st.header("선수 기록")
 
@@ -113,25 +140,20 @@ with tabs[4]:
 
         st.write("선수 기록 없음")
 
-# 롯데 분석
-with tabs[5]:
+# 롯데 승율 예측
+with tabs[6]:
 
-    st.header("📊 롯데 승률 그래프")
+    st.header("롯데 승률 예측")
 
-    games = [10,20,30,40,50]
-    winrate = [0.4,0.45,0.48,0.52,0.55]
+    win = predict_win()
 
-    fig, ax = plt.subplots()
-
-    ax.plot(games, winrate)
-
-    ax.set_xlabel("Games")
-    ax.set_ylabel("Win Rate")
-
-    st.pyplot(fig)
+    st.metric(
+        label="오늘 승리 확률",
+        value=f"{win*100}%"
+    )
 
 # 영상
-with tabs[6]:
+with tabs[7]:
 
     st.header("롯데 하이라이트")
 
@@ -139,6 +161,7 @@ with tabs[6]:
     "유튜브 하이라이트",
     "https://www.youtube.com/results?search_query=롯데+자이언츠+하이라이트"
     )
+
 
 
 
