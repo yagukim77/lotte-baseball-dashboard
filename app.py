@@ -47,14 +47,15 @@ with tabs[0]:
 
     try:
 
-        df = pd.read_csv("schedule.csv")
+        schedule=pd.read_csv("data/schedule.csv")
 
-        lotte = df[df["match"].str.contains("롯데")]
+        lotte=schedule[schedule["match"].str.contains("롯데")]
 
-        for _,r in lotte.iterrows():
+    if len(lotte)>0:
 
-            st.subheader(r["match"])
-            st.write(r["stadium"])
+        st.warning("⚾ 오늘 롯데 경기 있습니다!")
+
+        st.dataframe(lotte)
 
     except:
 
@@ -174,9 +175,15 @@ with tabs[6]:
 
     try:
 
-        players = pd.read_csv("data/players_stats.csv")
+        players=pd.read_csv("players_stats.csv")
 
-        st.dataframe(players)
+        fig,ax=plt.subplots()
+
+        ax.bar(players["player"],players["ops"])
+
+        ax.set_title("롯데 OPS 분석")
+
+        st.pyplot(fig)
 
     except:
 
@@ -196,10 +203,15 @@ with tabs[8]:
 
     st.header("롯데 하이라이트")
 
-    st.link_button(
-    "유튜브 하이라이트",
-    "https://www.youtube.com/results?search_query=롯데+자이언츠+하이라이트"
+    yt=pd.read_csv("data/youtube.csv")
+
+    for _,v in yt.head(5).iterrows():
+
+    st.subheader(v["title"])
+
+    st.video(v["link"])
     )
+
 
 
 
