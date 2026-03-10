@@ -4,6 +4,7 @@ from players import players
 import streamlit as st
 import pandas as pd
 import time
+from ai_summary import summarize
 
 st.set_page_config(layout="wide")
 
@@ -114,3 +115,4 @@ with tabs[4]:
 
 
     st.video("https://www.youtube.com/watch?v=6z6L1v3c8a8")
+
