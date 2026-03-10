@@ -16,3 +16,9 @@ def extract_keywords(titles):
     common = counter.most_common(10)
 
     return common
+
+import random
+
+def predict_win():
+
+    return round(random.uniform(0.45,0.65),2)
