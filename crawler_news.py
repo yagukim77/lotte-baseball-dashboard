@@ -1,27 +1,42 @@
-import feedparser
+import requests
 import pandas as pd
-from datetime import datetime
+from bs4 import BeautifulSoup
+from urllib.parse import quote
 
-url = "https://news.google.com/rss/search?q=롯데자이언츠&hl=ko&gl=KR&ceid=KR:ko"
+keyword = "롯데자이언츠"
 
-feed = feedparser.parse(url)
+google_url = f"https://news.google.com/rss/search?q={quote(keyword)}&hl=ko&gl=KR&ceid=KR:ko"
 
-data = []
+naver_url = f"https://news.google.com/rss/search?q=site:naver.com+{quote(keyword)}&hl=ko&gl=KR&ceid=KR:ko"
 
-for entry in feed.entries:
+urls = [google_url, naver_url]
 
-    date = datetime(*entry.published_parsed[:6]).strftime("%Y-%m-%d")
+news = []
 
-    data.append({
-        "date": date,
-        "title": entry.title,
-        "link": entry.link
-    })
+for url in urls:
 
-df = pd.DataFrame(data)
+    res = requests.get(url)
+    soup = BeautifulSoup(res.text, "xml")
 
-df = df.drop_duplicates(subset=["title"])
+    items = soup.find_all("item")
+
+    for i in items:
+
+        title = i.title.text
+        link = i.link.text
+        pubdate = i.pubDate.text
+
+        news.append({
+            "title": title,
+            "link": link,
+            "date": pubdate
+        })
+
+df = pd.DataFrame(news)
+
+# 중복 제거
+df = df.drop_duplicates(subset="title")
 
 df.to_csv("news.csv", index=False)
 
-print("뉴스 저장:", len(df))
+print("뉴스 수집:", len(df))
