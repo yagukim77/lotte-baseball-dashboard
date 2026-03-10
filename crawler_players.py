@@ -7,3 +7,5 @@ df = pd.read_html(url)[0]
 lotte = df[df["팀명"] == "롯데"]
 
 lotte.to_csv("players_stats.csv", index=False)
+
+print("선수 기록 저장")
