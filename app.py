@@ -116,4 +116,5 @@ with tabs[5]:
 
     st.header("📺 롯데 하이라이트")
 
-    st.video("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+    st.video("https://www.youtube.com/results?search_query=롯데+자이언츠+하이라이트")
+
