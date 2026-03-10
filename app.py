@@ -2,9 +2,17 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 import os
+if not os.path.exists("data"):
+    os.makedirs("data")
+
 if not os.path.exists("data/news.csv"):
-    import crawler_news
-    import crawler_article
+    df = pd.DataFrame(columns=["date","title","link"])
+    df.to_csv("data/news.csv",index=False)
+
+if not os.path.exists("data/articles.csv"):
+    df = pd.DataFrame(columns=["title","text"])
+    df.to_csv("data/articles.csv",index=False)
+    
 import subprocess
 subprocess.run(["python","crawler_news.py"])
 subprocess.run(["python","crawler_article.py"])
@@ -192,6 +200,7 @@ with tabs[8]:
     "유튜브 하이라이트",
     "https://www.youtube.com/results?search_query=롯데+자이언츠+하이라이트"
     )
+
 
 
 
