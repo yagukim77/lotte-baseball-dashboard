@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
+from ai_summary import summarize
 
 st.set_page_config(page_title="⚾ Lotte Giants Dashboard")
 
@@ -117,4 +118,5 @@ with tabs[5]:
     st.header("📺 롯데 하이라이트")
 
     st.video("https://www.youtube.com/results?search_query=롯데+자이언츠+하이라이트")
+
 
