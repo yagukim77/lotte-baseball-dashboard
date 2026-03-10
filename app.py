@@ -1,6 +1,9 @@
 import streamlit as st
 import pandas as pd
 from players import players
+import streamlit as st
+import pandas as pd
+import time
 
 st.set_page_config(layout="wide")
 
@@ -108,5 +111,6 @@ with tabs[3]:
 with tabs[4]:
 
     st.header("📺 롯데 자이언츠 영상")
+
 
     st.video("https://www.youtube.com/watch?v=6z6L1v3c8a8")
