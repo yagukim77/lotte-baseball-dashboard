@@ -1,118 +1,119 @@
 import streamlit as st
 import pandas as pd
-from players import players
-import streamlit as st
-import pandas as pd
-import time
-from ai_summary import summarize
+import matplotlib.pyplot as plt
 
-st.set_page_config(layout="wide")
+st.set_page_config(page_title="⚾ Lotte Giants Dashboard")
 
-st.title("⚾ 롯데 자이언츠 팬 대시보드")
+st.title("⚾ LOTTE GIANTS BASEBALL DASHBOARD")
 
-tabs = st.tabs(["오늘 경기","뉴스","선수 뉴스","KBO 순위","영상"])
+tabs = st.tabs([
+"오늘 경기",
+"뉴스",
+"AI 뉴스 요약",
+"선수 기록",
+"롯데 분석",
+"영상"
+])
 
-
-# -------------------
 # 오늘 경기
-# -------------------
 with tabs[0]:
 
-    st.header("⚾ 오늘 경기 결과")
+    st.header("⚾ 오늘 롯데 경기")
 
     try:
 
-        df=pd.read_csv("result.csv")
+        df = pd.read_csv("schedule.csv")
 
-        today=df[df["match"].str.contains("롯데")]
+        today = df[df["match"].str.contains("롯데")]
 
-        if len(today)==0:
+        if len(today) == 0:
 
-            st.write("오늘 롯데 경기 없음")
+            st.write("오늘 경기 없음")
 
         else:
 
             for _,r in today.iterrows():
 
                 st.subheader(r["match"])
-                st.write("스코어:",r["score"])
+                st.write(r["stadium"])
 
     except:
 
-        st.write("경기 결과 데이터 없음")
+        st.write("경기 데이터 없음")
 
-
-# -------------------
 # 뉴스
-# -------------------
-
 with tabs[1]:
 
     st.header("📰 롯데 뉴스")
 
-    df=pd.read_csv("news.csv")
+    try:
 
-    df["date"]=pd.to_datetime(df["date"])
+        df = pd.read_csv("news.csv")
 
-    date=st.date_input("날짜 선택")
+        for _,r in df.head(10).iterrows():
 
-    f=df[df["date"]==pd.to_datetime(date)]
+            st.subheader(r["title"])
+            st.link_button("기사보기", r["link"])
 
-    st.write("기사:",len(f))
+    except:
 
-    for _,r in f.iterrows():
+        st.write("뉴스 없음")
 
-        st.subheader(r["title"])
-        st.link_button("기사보기",r["link"])
-        st.divider()
-
-
-# -------------------
-# 선수 뉴스
-# -------------------
+# AI 요약
 with tabs[2]:
 
-    st.header("⚾ 롯데 선수 뉴스")
+    st.header("🧠 AI 뉴스 요약")
 
-    df=pd.read_csv("news.csv")
+    try:
 
-    for p in players:
+        df = pd.read_csv("news.csv")
 
-        st.subheader(p)
+        for _,r in df.head(5).iterrows():
 
-        result=df[df["title"].str.contains(p,na=False)]
+            summary = r["title"].split(".")[0]
 
-        if len(result)==0:
+            st.subheader(r["title"])
+            st.write("요약:", summary)
 
-            st.write("관련 뉴스 없음")
+    except:
 
-        else:
+        st.write("요약 데이터 없음")
 
-            for _,r in result.iterrows():
-
-                st.write(r["title"])
-                st.link_button("기사보기",r["link"])
-
-# -------------------
-# 순위
-# -------------------
-
+# 선수 기록
 with tabs[3]:
 
-    st.header("📊 KBO 순위")
+    st.header("⚾ 선수 기록")
 
-    rank=pd.read_csv("rank.csv")
+    try:
 
-    st.dataframe(rank)
+        df = pd.read_csv("players_stats.csv")
 
-# -------------------
-# 영상
-# -------------------
+        st.dataframe(df)
 
+    except:
+
+        st.write("선수 기록 없음")
+
+# 롯데 분석
 with tabs[4]:
 
-    st.header("📺 롯데 자이언츠 영상")
+    st.header("📊 롯데 승률 그래프")
 
+    games = [10,20,30,40,50]
+    winrate = [0.4,0.45,0.48,0.52,0.55]
 
-    st.video("https://www.youtube.com/watch?v=6z6L1v3c8a8")
+    fig, ax = plt.subplots()
 
+    ax.plot(games, winrate)
+
+    ax.set_xlabel("Games")
+    ax.set_ylabel("Win Rate")
+
+    st.pyplot(fig)
+
+# 영상
+with tabs[5]:
+
+    st.header("📺 롯데 하이라이트")
+
+    st.video("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
