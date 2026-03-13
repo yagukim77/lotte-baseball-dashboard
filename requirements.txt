@@ -1,9 +1,0 @@
-streamlit
-pandas
-requests
-beautifulsoup4
-feedparser
-matplotlib
-wordcloud
-lxml
-scikit-learn
