@@ -1,0 +1,10 @@
+streamlit
+pandas
+numpy
+feedparser
+beautifulsoup4
+requests
+matplotlib
+wordcloud
+scikit-learn
+streamlit-autorefresh
