@@ -5,11 +5,12 @@ from datetime import datetime
 from ai.score_predictor import predict_score
 from ai.simulator import simulate_game
 from ai.lineup_optimizer import recommend_lineup
+from ai.win_predictor import predict_winrate
 
 from analysis.keywords import extract_keywords
 from analysis.war_analysis import calculate_war
 from analysis.team_matchup import team_record
-from analysis.recent_games import recent_10
+from analysis.recent_games import analyze_recent_games
 from analysis.season import season_winrate
 
 from crawlers.live_score import get_live_score
@@ -194,3 +195,9 @@ if menu=="시즌 승률 그래프":
     df=season_winrate()
 
     st.line_chart(df["win_rate"])
+
+try:
+    from streamlit_autorefresh import st_autorefresh
+    st_autorefresh(interval=600000)
+except:
+    pass
