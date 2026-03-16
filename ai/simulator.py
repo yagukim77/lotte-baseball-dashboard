@@ -1,15 +1,13 @@
-import numpy as np
+import random
 
-def simulate_game(team,opp,n=1000):
+def simulate_game():
 
-    win=0
+    lotte = random.randint(2,9)
+    opponent = random.randint(1,8)
 
-    for i in range(n):
+    if lotte > opponent:
+        result = "롯데 승리"
+    else:
+        result = "상대팀 승리"
 
-        t=np.random.poisson(team)
-        o=np.random.poisson(opp)
-
-        if t>o:
-            win+=1
-
-    return win/n
+    return lotte, opponent, result
