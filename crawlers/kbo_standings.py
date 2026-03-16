@@ -1,19 +1,15 @@
 import pandas as pd
 
-teams = [
+url = "https://www.koreabaseball.com/Record/TeamRank/TeamRankDaily.aspx"
 
-{"team":"KIA","win":50,"lose":30},
-{"team":"LG","win":48,"lose":32},
-{"team":"두산","win":45,"lose":35},
-{"team":"롯데","win":42,"lose":38},
-{"team":"KT","win":40,"lose":40}
+tables = pd.read_html(url)
 
-]
+df = tables[0]
 
-df = pd.DataFrame(teams)
+df = df[["팀명","승","패","무","승률"]]
 
-df["win_rate"] = df["win"] / (df["win"] + df["lose"])
+df.columns = ["team","win","lose","draw","rate"]
 
-df.to_csv("data/kbo_standings.csv", index=False)
+df.to_csv("data/kbo_standings.csv",index=False)
 
-print("KBO 순위 저장")
+print("KBO standings saved")
