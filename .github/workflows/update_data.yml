@@ -1,53 +1,53 @@
 name: Update Data
 
 on:
-  workflow_dispatch:
   schedule:
-    - cron: "0 */6 * * *"
+    - cron: "0 */3 * * *"
+  workflow_dispatch:
 
 jobs:
-
-  build:
+  update:
 
     runs-on: ubuntu-latest
 
     steps:
 
-      - name: Checkout repository
-        uses: actions/checkout@v3
+    - name: Checkout
+      uses: actions/checkout@v4
 
+    - name: Set Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
 
-      - name: Setup Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.10"
+    - name: Install packages
+      run: |
+        pip install -r requirements.txt
 
+    - name: Run News Crawler
+      run: |
+        python crawlers/news_crawler.py
 
-      - name: Install dependencies
-        run: |
-          pip install pandas
-          pip install requests
-          pip install beautifulsoup4
-          pip install lxml
+    - name: Run Standings Crawler
+      run: |
+        python crawlers/standings_crawler.py
 
+    - name: Run Players Crawler
+      run: |
+        python crawlers/players_crawler.py
 
-      - name: Create data folder
-        run: mkdir -p data
+    - name: Run Schedule Crawler
+      run: |
+        python crawlers/schedule_crawler.py
 
+    - name: Run Games Crawler
+      run: |
+        python crawlers/games_crawler.py
 
-      - name: Run crawlers
-        run: |
-          python crawlers/news_crawler.py
-          python crawlers/players_kbo_crawler.py
-          python crawlers/schedule_kbo_crawler.py
-          python crawlers/games_kbo_crawler.py
-          python crawlers/standings_kbo_crawler.py
-
-
-      - name: Commit updated data
-        run: |
-          git config --global user.name "github-actions"
-          git config --global user.email "actions@github.com"
-          git add data
-          git commit -m "auto update data" || echo "no changes"
-          git push
+    - name: Commit files
+      run: |
+        git config --global user.name "github-actions"
+        git config --global user.email "actions@github.com"
+        git add .
+        git commit -m "auto data update" || echo "no changes"
+        git push
