@@ -16,6 +16,30 @@ try:
 except:
     pass
 
+# sidebar 메뉴 CSS
+st.markdown("""
+<style>
+
+.menu-item {
+padding:10px;
+font-size:18px;
+border-radius:6px;
+cursor:pointer;
+}
+
+.menu-item:hover {
+background-color:#f0f2f6;
+}
+
+.active {
+background-color:#ff4b4b;
+color:white;
+font-weight:bold;
+}
+
+</style>
+""", unsafe_allow_html=True)
+
 
 st.set_page_config(
     page_title="롯데 AI 야구 플랫폼",
@@ -74,19 +98,17 @@ standings = load_standings()
 
 
 # 사이드바
-menu = st.sidebar.radio(
-
-    "메뉴",
-
-    [
-        "대시보드",
-        "뉴스",
-        "선수 분석",
-        "경기 일정",
-        "경기 결과",
-        "AI 분석",
-        "경기 시뮬레이터"
-    ]
+menu = st.sidebar.selectbox(
+"메뉴 선택",
+[
+"대시보드",
+"뉴스",
+"선수 분석",
+"경기 일정",
+"경기 결과",
+"AI 분석",
+"경기 시뮬레이터"
+]
 )
 
 
