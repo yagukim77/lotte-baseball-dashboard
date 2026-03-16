@@ -12,4 +12,4 @@ df.columns = ["name","ops"]
 
 df.to_csv("data/players_stats.csv",index=False)
 
-print("players stats saved")
+print("players updated")
