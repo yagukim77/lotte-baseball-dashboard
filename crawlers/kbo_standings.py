@@ -1,6 +1,8 @@
 import pandas as pd
 
-url = "https://www.koreabaseball.com/Record/TeamRank/TeamRankDaily.aspx"
+# 정규시즌 url = "https://www.koreabaseball.com/Record/TeamRank/TeamRankDaily.aspx"
+
+url = "https://www.koreabaseball.com/Record/CampRank/CampRank.aspx"
 
 tables = pd.read_html(url)
 
