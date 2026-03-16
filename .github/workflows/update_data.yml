@@ -2,11 +2,10 @@ name: Update Data
 
 on:
   schedule:
-    - cron: "0 15 * * *"
+    - cron: "0 */3 * * *"
   workflow_dispatch:
-  
-jobs:
 
+jobs:
   build:
 
     runs-on: ubuntu-latest
@@ -22,15 +21,17 @@ jobs:
 
     - run: pip install -r requirements.txt
 
-    - run: |
+    - name: Run Crawlers
+      run: |
         python crawlers/news_crawler.py
         python crawlers/players_kbo_crawler.py
         python crawlers/schedule_kbo_crawler.py
         python crawlers/games_kbo_crawler.py
 
-    - run: |
+    - name: Commit Data
+      run: |
         git config --global user.name "github-actions"
-        git config --global user.email "action@github.com"
+        git config --global user.email "actions@github.com"
         git add data/*.csv
-        git commit -m "auto update data"
+        git commit -m "auto update data" || echo "no change"
         git push
