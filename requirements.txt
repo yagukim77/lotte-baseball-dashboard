@@ -1,10 +1,7 @@
 streamlit
 pandas
-numpy
 feedparser
-beautifulsoup4
 requests
+beautifulsoup4
 matplotlib
-wordcloud
 scikit-learn
-streamlit-autorefresh
