@@ -1,9 +1,7 @@
-def elo(team,opp):
+def calculate_elo(win, lose):
 
     base = 1500
 
-    diff = team - opp
-
-    rating = base + diff*100
+    rating = base + (win - lose) * 10
 
     return rating
