@@ -5,10 +5,11 @@ import random
 import re
 from collections import Counter
 
-# ===============================
-# 자동 새로고침 (안정 코드)
-# ===============================
+from ai.elo_rating import calculate_elo
+from ai.win_model import predict_win_probability
+from ai.simulator import simulate_game
 
+# 자동 새로고침 안정코드
 try:
     from streamlit_autorefresh import st_autorefresh
     st_autorefresh(interval=600000)
@@ -16,28 +17,20 @@ except:
     pass
 
 
-# ===============================
-# 페이지 설정
-# ===============================
-
 st.set_page_config(
     page_title="롯데 AI 야구 플랫폼",
     layout="wide"
 )
 
-st.title("⚾ 롯데 자이언츠 AI 분석 플랫폼")
+st.title("⚾ 롯데 자이언츠 AI 분석 플랫폼 ULTIMATE")
 
-
-# ===============================
-# 데이터 로드
-# ===============================
 
 @st.cache_data
 def load_news():
     try:
         return pd.read_csv("data/news.csv")
     except:
-        return pd.DataFrame(columns=["title","link","summary"])
+        return pd.DataFrame(columns=["title","link"])
 
 
 @st.cache_data
@@ -61,7 +54,7 @@ def load_games():
     try:
         return pd.read_csv("data/games.csv")
     except:
-        return pd.DataFrame(columns=["date","opponent","win","lose","result"])
+        return pd.DataFrame(columns=["date","opponent","result"])
 
 
 @st.cache_data
@@ -69,7 +62,7 @@ def load_standings():
     try:
         return pd.read_csv("data/kbo_standings.csv")
     except:
-        return pd.DataFrame(columns=["team","win","lose","win_rate"])
+        return pd.DataFrame(columns=["team","win","lose"])
 
 
 
@@ -80,29 +73,26 @@ games = load_games()
 standings = load_standings()
 
 
-# ===============================
 # 사이드바
-# ===============================
-
-st.sidebar.title("메뉴")
-
 menu = st.sidebar.radio(
-    "선택",
+
+    "메뉴",
+
     [
         "대시보드",
         "뉴스",
         "선수 분석",
         "경기 일정",
         "경기 결과",
-        "AI 분석"
+        "AI 분석",
+        "경기 시뮬레이터"
     ]
 )
 
 
-
-# ===============================
+# =========================
 # 대시보드
-# ===============================
+# =========================
 
 if menu == "대시보드":
 
@@ -123,15 +113,16 @@ if menu == "대시보드":
         loses=0
 
 
+    elo = calculate_elo(wins,loses)
+
     with col1:
-        st.metric("최근 10경기 승",wins)
+        st.metric("최근10경기 승",wins)
 
     with col2:
-        st.metric("최근 10경기 패",loses)
+        st.metric("최근10경기 패",loses)
 
     with col3:
-        rate = round(random.uniform(0.45,0.65),2)
-        st.metric("AI 예상 승률",rate)
+        st.metric("ELO 전력지수",elo)
 
 
     st.subheader("KBO 순위")
@@ -140,9 +131,9 @@ if menu == "대시보드":
 
 
 
-# ===============================
+# =========================
 # 뉴스
-# ===============================
+# =========================
 
 if menu == "뉴스":
 
@@ -153,8 +144,7 @@ if menu == "뉴스":
         st.markdown(f"[{row['title']}]({row['link']})")
 
 
-
-    st.subheader("📊 뉴스 키워드 분석")
+    st.subheader("뉴스 키워드 분석")
 
     titles = news["title"].tolist()
 
@@ -176,13 +166,13 @@ if menu == "뉴스":
 
 
 
-# ===============================
+# =========================
 # 선수 분석
-# ===============================
+# =========================
 
 if menu == "선수 분석":
 
-    st.header("🏏 롯데 선수 OPS 분석")
+    st.header("🏏 선수 OPS")
 
     st.dataframe(players)
 
@@ -192,15 +182,13 @@ if menu == "선수 분석":
 
         ax.bar(players["name"],players["ops"])
 
-        ax.set_title("OPS")
-
         st.pyplot(fig)
 
 
 
-# ===============================
+# =========================
 # 경기 일정
-# ===============================
+# =========================
 
 if menu == "경기 일정":
 
@@ -210,9 +198,9 @@ if menu == "경기 일정":
 
 
 
-# ===============================
+# =========================
 # 경기 결과
-# ===============================
+# =========================
 
 if menu == "경기 결과":
 
@@ -222,36 +210,17 @@ if menu == "경기 결과":
 
 
 
-    if len(games)>0:
-
-        st.subheader("최근 10경기")
-
-        st.dataframe(games.tail(10))
-
-
-
-# ===============================
+# =========================
 # AI 분석
-# ===============================
+# =========================
 
 if menu == "AI 분석":
 
     st.header("🤖 AI 경기 분석")
 
+    prob = predict_win_probability()
 
-    st.subheader("AI 예상 스코어")
-
-    lotte=random.randint(3,8)
-    opp=random.randint(2,7)
-
-    col1,col2 = st.columns(2)
-
-    with col1:
-        st.metric("롯데",lotte)
-
-    with col2:
-        st.metric("상대팀",opp)
-
+    st.metric("AI 승률 예측",prob)
 
 
     st.subheader("시즌 승률 그래프")
@@ -260,20 +229,32 @@ if menu == "AI 분석":
 
         games["win"]=games["result"].apply(lambda x:1 if x=="W" else 0)
 
-        games["cum_win"]=games["win"].cumsum()
+        games["cum"]=games["win"].cumsum()
 
         games["game"]=range(1,len(games)+1)
 
         fig,ax=plt.subplots()
 
-        ax.plot(games["game"],games["cum_win"])
-
-        ax.set_title("누적 승리")
+        ax.plot(games["game"],games["cum"])
 
         st.pyplot(fig)
 
 
 
-    st.subheader("유튜브 하이라이트")
+# =========================
+# 경기 시뮬레이터
+# =========================
 
-    st.write("https://www.youtube.com/results?search_query=롯데자이언츠+하이라이트")
+if menu == "경기 시뮬레이터":
+
+    st.header("🎮 경기 시뮬레이터")
+
+    if st.button("경기 시뮬레이션 실행"):
+
+        lotte,opp,result = simulate_game()
+
+        st.write("롯데:",lotte)
+
+        st.write("상대:",opp)
+
+        st.subheader(result)
