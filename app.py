@@ -9,6 +9,9 @@ from ai.elo_rating import calculate_elo
 from ai.win_model import predict_win_probability
 from ai.simulator import simulate_game
 
+import matplotlib.pyplot as plt
+plt.rcParams['font.family'] = 'NanumGothic'
+
 # 자동 새로고침 안정코드
 try:
     from streamlit_autorefresh import st_autorefresh
@@ -201,7 +204,7 @@ if menu == "선수 분석":
 
     if len(players)>0:
 
-        fig,ax = plt.subplots()
+        fig,ax = plt.subplots(figsize=(4,2))
 
         ax.bar(players["name"],players["ops"])
 
@@ -256,7 +259,7 @@ if menu == "AI 분석":
 
         games["game"]=range(1,len(games)+1)
 
-        fig,ax=plt.subplots()
+        fig,ax=plt.subplots(figsize-(4,2))
 
         ax.plot(games["game"],games["cum"])
 
