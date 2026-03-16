@@ -1,319 +1,194 @@
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
-import random
-import numpy as np
-import re
-from collections import Counter
+import plotly.express as px
+import os
 
-# =========================
-# 페이지 설정
-# =========================
+from analysis.ai_model import predict_win, predict_score
+from analysis.elo_rating import calculate_elo
+from analysis.keywords import extract_keywords
+
 
 st.set_page_config(
     page_title="롯데 AI 야구 플랫폼",
     layout="wide"
 )
 
+
 st.title("⚾ 롯데 자이언츠 AI 분석 플랫폼")
 
-# =========================
-# 데이터 로드
-# =========================
-
-@st.cache_data
-def load_news():
-    try:
-        return pd.read_csv("data/news.csv")
-    except:
-        return pd.DataFrame(columns=["title","link"])
-
-
-@st.cache_data
-def load_players():
-    try:
-        return pd.read_csv("data/players_stats.csv")
-    except:
-        return pd.DataFrame(columns=["name","ops"])
-
-
-@st.cache_data
-def load_schedule():
-    try:
-        try:
-            return pd.read_csv("data/schedule.csv")
-        except:
-            return pd.DataFrame(columns=["date","opponent"])
-    except:
-        return pd.DataFrame()
-
-
-@st.cache_data
-def load_games():
-    try:
-        return pd.read_csv("data/games.csv")
-    except:
-        return pd.DataFrame(columns=["date","opponent","result"])
-
-
-@st.cache_data
-def load_standings():
-    try:
-        return pd.read_csv("data/kbo_standings.csv")
-    except:
-        return pd.DataFrame(columns=["team","win","lose","draw","rate"])
-
-
-news = load_news()
-players = load_players()
-schedule = load_schedule()
-games = load_games()
-standings = load_standings()
-
-
-# =========================
-# 사이드 메뉴
-# =========================
 
 menu = st.sidebar.selectbox(
-
-    "메뉴",
-
+    "메뉴 선택",
     [
-        "대시보드",
-        "뉴스",
-        "선수 OPS 분석",
-        "경기 일정",
-        "경기 결과",
-        "AI 경기 분석",
-        "경기 시뮬레이터"
+        "홈",
+        "뉴스 분석",
+        "KBO 순위",
+        "선수 OPS",
+        "최근 경기",
+        "AI 경기 분석"
     ]
-
 )
 
+# -----------------------------
+# 홈
+# -----------------------------
 
-# =========================
-# 대시보드
-# =========================
+if menu == "홈":
 
-if menu == "대시보드":
+    st.header("롯데 자이언츠 대시보드")
 
-    st.header("📊 롯데 대시보드")
+    win_prob = predict_win()
 
-    if len(games) > 0:
+    st.metric(
+        "AI 승리 확률",
+        f"{win_prob*100:.1f}%"
+    )
 
-        last10 = games.tail(10)
+    score = predict_score()
 
-        wins = len(last10[last10["result"]=="승"])
-        loses = len(last10[last10["result"]=="패"])
-        draws = len(last10[last10["result"]=="무"])
+    st.write("AI 예상 스코어")
 
-    else:
+    st.subheader(score)
 
-        wins = loses = draws = 0
+    elo = calculate_elo()
 
-    col1,col2,col3 = st.columns(3)
+    st.metric(
+        "전력지수(ELO)",
+        elo
+    )
 
-    with col1:
-        st.metric("최근 10경기 승",wins)
 
-    with col2:
-        st.metric("최근 10경기 패",loses)
+# -----------------------------
+# 뉴스 분석
+# -----------------------------
 
-    with col3:
-        st.metric("최근 10경기 무",draws)
+elif menu == "뉴스 분석":
 
+    st.header("롯데 뉴스 분석")
 
-    st.subheader("KBO 순위")
+    try:
 
-    st.dataframe(standings)
+        df = pd.read_csv("data/news.csv")
 
+        st.dataframe(df)
 
-# =========================
-# 뉴스
-# =========================
+        keywords = extract_keywords(df["title"])
 
-if menu == "뉴스":
+        kw_df = pd.DataFrame(keywords,columns=["keyword","count"])
 
-    st.header("📰 롯데 뉴스")
+        fig = px.bar(
+            kw_df,
+            x="keyword",
+            y="count",
+            height=400
+        )
 
-    for i,row in news.head(20).iterrows():
+        st.plotly_chart(fig)
 
-        st.markdown(f"[{row['title']}]({row['link']})")
+    except:
 
+        st.write("뉴스 데이터 없음")
 
-    st.subheader("뉴스 키워드 분석")
 
-    titles = news["title"].tolist()
+# -----------------------------
+# KBO 순위
+# -----------------------------
 
-    words=[]
+elif menu == "KBO 순위":
 
-    for t in titles:
+    st.header("KBO 순위")
 
-        w=re.findall(r"[가-힣]{2,}",t)
+    try:
 
-        words.extend(w)
+        df = pd.read_csv("data/kbo_standings.csv")
 
-    counter=Counter(words)
+        st.dataframe(df)
 
-    top=counter.most_common(10)
+    except:
 
-    keywords=pd.DataFrame(top,columns=["keyword","count"])
+        st.write("순위 데이터 없음")
 
-    st.dataframe(keywords)
 
+# -----------------------------
+# 선수 OPS
+# -----------------------------
 
-# =========================
-# 선수 OPS 분석
-# =========================
+elif menu == "선수 OPS":
 
-if menu == "선수 OPS 분석":
+    st.header("롯데 선수 OPS")
 
-    st.header("🏏 롯데 선수 OPS")
+    try:
 
-    st.dataframe(players)
+        df = pd.read_csv("data/players_stats.csv")
 
-    if len(players)>0:
+        st.dataframe(df)
 
-        fig, ax = plt.subplots(figsize=(4,2))
+        fig = px.bar(
+            df,
+            x="player",
+            y="ops",
+            height=300
+        )
 
-        ax.bar(players["name"],players["ops"])
+        st.plotly_chart(fig)
 
-        ax.set_title("OPS")
+    except:
 
-        plt.xticks(rotation=45)
+        st.write("선수 데이터 없음")
 
-        st.pyplot(fig)
 
+# -----------------------------
+# 최근 경기
+# -----------------------------
 
+elif menu == "최근 경기":
 
-# =========================
-# 경기 일정
-# =========================
+    st.header("롯데 최근 경기")
 
-if menu == "경기 일정":
+    try:
 
-    st.header("📅 경기 일정")
+        df = pd.read_csv("data/games.csv")
 
-    st.dataframe(schedule)
+        last10 = df.tail(10)
 
+        st.dataframe(last10)
 
-# =========================
-# 경기 결과
-# =========================
+        wins = len(last10[last10["result"]=="W"])
 
-if menu == "경기 결과":
+        st.metric(
+            "최근 10경기 승리",
+            wins
+        )
 
-    st.header("📊 경기 결과")
+    except:
 
-    st.dataframe(games)
+        st.write("경기 데이터 없음")
 
 
-# =========================
-# AI 분석
-# =========================
+# -----------------------------
+# AI 경기 분석
+# -----------------------------
 
-if menu == "AI 경기 분석":
+elif menu == "AI 경기 분석":
 
-    st.header("🤖 AI 경기 분석")
+    st.header("AI 경기 분석")
 
+    win_prob = predict_win()
 
-    if len(players)>0:
+    st.metric(
+        "승리 확률",
+        f"{win_prob*100:.1f}%"
+    )
 
-        lotte_ops = players["ops"].mean()
-
-    else:
-
-        lotte_ops = 0.72
-
-
-    opp_ops = random.uniform(0.65,0.80)
-
-
-    win_prob = lotte_ops / (lotte_ops + opp_ops)
-
-    st.metric("AI 승률 예측", round(win_prob,2))
-
-
-    st.subheader("시즌 승리 그래프")
-
-    if len(games)>0:
-
-        games["win"]=games["result"].apply(lambda x:1 if x=="승" else 0)
-
-        games["cum"]=games["win"].cumsum()
-
-        games["game"]=range(1,len(games)+1)
-
-        fig,ax=plt.subplots(figsize=(6,3))
-
-        ax.plot(games["game"],games["cum"])
-
-        ax.set_title("누적 승리")
-
-        st.pyplot(fig)
-
-
-# =========================
-# 경기 시뮬레이터
-# =========================
-
-if menu == "경기 시뮬레이터":
-
-    st.header("🎮 경기 시뮬레이터")
-
-    teams = [
-
-        "LG",
-        "두산",
-        "KIA",
-        "삼성",
-        "한화",
-        "KT",
-        "SSG",
-        "NC",
-        "키움"
-
-    ]
-
-    opponent = st.selectbox("상대팀 선택",teams)
-
-
-    if len(players)>0:
-
-        lotte_ops = players["ops"].mean()
-
-    else:
-
-        lotte_ops = 0.72
-
-
-    opp_ops = random.uniform(0.65,0.80)
-
-
-    prob = lotte_ops/(lotte_ops+opp_ops)
-
-
-    lotte_score = int(prob*10)+random.randint(0,2)
-
-    opp_score = int((1-prob)*10)+random.randint(0,2)
-
+    score = predict_score()
 
     st.subheader("AI 예상 스코어")
 
-    col1,col2 = st.columns(2)
+    st.write(score)
 
-    with col1:
-        st.metric("롯데",lotte_score)
+    elo = calculate_elo()
 
-    with col2:
-        st.metric(opponent,opp_score)
-
-
-    if lotte_score>opp_score:
-
-        st.success("롯데 승리 예상")
-
-    else:
-
-        st.error("상대팀 승리 예상")
+    st.metric(
+        "ELO 전력지수",
+        elo
+    )
