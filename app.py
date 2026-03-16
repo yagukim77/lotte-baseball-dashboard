@@ -126,8 +126,9 @@ if menu == "대시보드":
 
         last10 = games.tail(10)
 
-        wins = len(last10[last10["result"]=="W"])
-        loses = len(last10[last10["result"]=="L"])
+        wins = len(last10[last10["result"]=="승"])
+        loses = len(last10[last10["result"]=="패"])
+        draws = len(last10[last10["result"]=="무"])
 
     else:
 
@@ -138,10 +139,10 @@ if menu == "대시보드":
     elo = calculate_elo(wins,loses)
 
     with col1:
-        st.metric("최근10경기 승",wins)
+        st.metric("승",wins)
 
     with col2:
-        st.metric("최근10경기 패",loses)
+        st.metric("패",loses)
 
     with col3:
         st.metric("ELO 전력지수",elo)
