@@ -1,17 +1,28 @@
 import pandas as pd
-import datetime
+import random
 import os
 
-data = [
-    {"date":"2026-03-01","team":"롯데","opponent":"LG","result":"W"},
-    {"date":"2026-03-02","team":"롯데","opponent":"NC","result":"L"},
-    {"date":"2026-03-03","team":"롯데","opponent":"삼성","result":"W"}
-]
+teams = ["LG","KT","두산","삼성","KIA","SSG","NC","키움","한화"]
+
+data = []
+
+for i in range(20):
+
+    opponent = random.choice(teams)
+
+    result = random.choice(["W","L"])
+
+    data.append({
+        "date":f"2026-03-{i+1}",
+        "team":"롯데",
+        "opponent":opponent,
+        "result":result
+    })
 
 df = pd.DataFrame(data)
 
-os.makedirs("data", exist_ok=True)
+os.makedirs("data",exist_ok=True)
 
-df.to_csv("data/games.csv", index=False)
+df.to_csv("data/games.csv",index=False)
 
-print("경기 결과 저장")
+print("경기 결과 저장 완료")
