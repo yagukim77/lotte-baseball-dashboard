@@ -30,6 +30,7 @@ jobs:
         python crawlers/players_kbo_crawler.py
         python crawlers/schedule_kbo_crawler.py
         python crawlers/games_kbo_crawler.py
+        python crawlers/kbo_standings.py
 
     - name: Commit Data
       run: |
