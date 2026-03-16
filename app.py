@@ -1,11 +1,10 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import os
 
+from analysis.keywords import extract_keywords
 from analysis.ai_model import predict_win, predict_score
 from analysis.elo_rating import calculate_elo
-from analysis.keywords import extract_keywords
 
 
 st.set_page_config(
@@ -13,58 +12,46 @@ st.set_page_config(
     layout="wide"
 )
 
-
 st.title("⚾ 롯데 자이언츠 AI 분석 플랫폼")
 
-
 menu = st.sidebar.selectbox(
-    "메뉴 선택",
+    "메뉴",
     [
         "홈",
         "뉴스 분석",
         "KBO 순위",
         "선수 OPS",
         "최근 경기",
-        "AI 경기 분석"
+        "AI 분석"
     ]
 )
 
-# -----------------------------
 # 홈
-# -----------------------------
 
-if menu == "홈":
+if menu=="홈":
 
-    st.header("롯데 자이언츠 대시보드")
+    st.header("AI 경기 예측")
 
-    win_prob = predict_win()
+    win = predict_win()
 
-    st.metric(
-        "AI 승리 확률",
-        f"{win_prob*100:.1f}%"
-    )
+    st.metric("승리 확률",f"{win*100:.1f}%")
 
     score = predict_score()
 
-    st.write("AI 예상 스코어")
+    st.subheader("예상 스코어")
 
-    st.subheader(score)
+    st.write(score)
 
     elo = calculate_elo()
 
-    st.metric(
-        "전력지수(ELO)",
-        elo
-    )
+    st.metric("전력지수(ELO)",elo)
 
 
-# -----------------------------
-# 뉴스 분석
-# -----------------------------
+# 뉴스
 
-elif menu == "뉴스 분석":
+elif menu=="뉴스 분석":
 
-    st.header("롯데 뉴스 분석")
+    st.header("롯데 뉴스")
 
     try:
 
@@ -90,11 +77,9 @@ elif menu == "뉴스 분석":
         st.write("뉴스 데이터 없음")
 
 
-# -----------------------------
-# KBO 순위
-# -----------------------------
+# 순위
 
-elif menu == "KBO 순위":
+elif menu=="KBO 순위":
 
     st.header("KBO 순위")
 
@@ -109,11 +94,9 @@ elif menu == "KBO 순위":
         st.write("순위 데이터 없음")
 
 
-# -----------------------------
-# 선수 OPS
-# -----------------------------
+# OPS
 
-elif menu == "선수 OPS":
+elif menu=="선수 OPS":
 
     st.header("롯데 선수 OPS")
 
@@ -137,11 +120,9 @@ elif menu == "선수 OPS":
         st.write("선수 데이터 없음")
 
 
-# -----------------------------
 # 최근 경기
-# -----------------------------
 
-elif menu == "최근 경기":
+elif menu=="최근 경기":
 
     st.header("롯데 최근 경기")
 
@@ -155,40 +136,27 @@ elif menu == "최근 경기":
 
         wins = len(last10[last10["result"]=="W"])
 
-        st.metric(
-            "최근 10경기 승리",
-            wins
-        )
+        st.metric("최근 10경기 승",wins)
 
     except:
 
         st.write("경기 데이터 없음")
 
 
-# -----------------------------
-# AI 경기 분석
-# -----------------------------
+# AI 분석
 
-elif menu == "AI 경기 분석":
+elif menu=="AI 분석":
 
     st.header("AI 경기 분석")
 
-    win_prob = predict_win()
+    win = predict_win()
 
-    st.metric(
-        "승리 확률",
-        f"{win_prob*100:.1f}%"
-    )
+    st.metric("AI 승률",f"{win*100:.1f}%")
 
     score = predict_score()
 
-    st.subheader("AI 예상 스코어")
-
-    st.write(score)
+    st.subheader(score)
 
     elo = calculate_elo()
 
-    st.metric(
-        "ELO 전력지수",
-        elo
-    )
+    st.metric("ELO",elo)
