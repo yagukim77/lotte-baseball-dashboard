@@ -6,28 +6,34 @@ on:
     - cron: "0 */6 * * *"
 
 jobs:
+
   build:
+
     runs-on: ubuntu-latest
 
     steps:
 
-      - uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
 
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
-          python-version: 3.10
+          python-version: "3.10"
 
-      - name: Install packages
+
+      - name: Install dependencies
         run: |
           pip install pandas
           pip install requests
           pip install beautifulsoup4
           pip install lxml
 
+
       - name: Create data folder
-        run: |
-          mkdir -p data
+        run: mkdir -p data
+
 
       - name: Run crawlers
         run: |
@@ -37,7 +43,8 @@ jobs:
           python crawlers/games_kbo_crawler.py
           python crawlers/standings_kbo_crawler.py
 
-      - name: Commit files
+
+      - name: Commit updated data
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "actions@github.com"
