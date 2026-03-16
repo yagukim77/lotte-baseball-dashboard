@@ -1,14 +1,14 @@
 import pandas as pd
+from datetime import date
 
-schedule = [
+games = [
 
-("2026-03-20","LG"),
-("2026-03-21","LG"),
-("2026-03-22","LG"),
-("2026-03-24","두산")
+{"date":"2026-04-01","opponent":"두산"},
+{"date":"2026-04-02","opponent":"LG"},
+{"date":"2026-04-03","opponent":"SSG"}
 
 ]
 
-df = pd.DataFrame(schedule,columns=["date","opponent"])
+df = pd.DataFrame(games)
 
 df.to_csv("data/schedule.csv",index=False)
