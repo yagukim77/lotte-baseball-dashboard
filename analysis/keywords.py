@@ -3,14 +3,16 @@ import re
 
 def extract_keywords(titles):
 
-    words=[]
+    words = []
 
     for t in titles:
 
-        w=re.findall(r"[가-힣]{2,}",t)
+        w = re.findall(r"[가-힣]{2,}", str(t))
 
         words.extend(w)
 
-    counter=Counter(words)
+    counter = Counter(words)
 
-    return counter.most_common(10)
+    common = counter.most_common(10)
+
+    return common
