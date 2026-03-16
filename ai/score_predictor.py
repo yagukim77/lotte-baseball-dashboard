@@ -1,8 +1,8 @@
-import numpy as np
+import random
 
-def predict_score(team,opp):
+def predict_score():
 
-    t=np.random.poisson(team)
-    o=np.random.poisson(opp)
+    lotte=random.randint(3,8)
+    opponent=random.randint(2,7)
 
-    return t,o
+    return lotte,opponent
