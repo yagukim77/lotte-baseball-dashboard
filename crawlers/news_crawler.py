@@ -1,36 +1,24 @@
 import feedparser
 import pandas as pd
+import os
 
-query = "롯데자이언츠"
+url = "https://news.google.com/rss/search?q=롯데자이언츠&hl=ko&gl=KR&ceid=KR:ko"
 
-urls = [
+feed = feedparser.parse(url)
 
-f"https://news.google.com/rss/search?q={query}&hl=ko&gl=KR&ceid=KR:ko",
+data = []
 
-f"https://rss.naver.com/search.naver?query={query}"
+for entry in feed.entries:
 
-]
+    data.append({
+        "title":entry.title,
+        "link":entry.link
+    })
 
-news = []
+df = pd.DataFrame(data)
 
-for url in urls:
-
-    feed = feedparser.parse(url)
-
-    for entry in feed.entries:
-
-        news.append({
-
-        "title": entry.title,
-
-        "link": entry.link,
-
-        "summary": entry.get("summary","")
-
-        })
-
-df = pd.DataFrame(news)
+os.makedirs("data",exist_ok=True)
 
 df.to_csv("data/news.csv",index=False)
 
-print("뉴스 저장:",len(df))
+print("뉴스 저장 완료")
