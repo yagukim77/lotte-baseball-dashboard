@@ -41,15 +41,15 @@ jobs:
 
     - name: Run Schedule Crawler
       run: |
-        python crawlers/schedule_crawler.py
+        python crawlers/kbo_schedule.py
 
     - name: Run Games Crawler
       run: |
         python crawlers/games_crawler.py
 
-    - name: Run Schedule_Crawler
+    - name: Run OPS crawler
       run: |
-        python crawlers/schedule_crawler.py
+        python crawlers/kbo_hitter_ops.py
 
     - name: Commit files
       run: |
