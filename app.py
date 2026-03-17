@@ -5,7 +5,8 @@ import plotly.express as px
 from analysis.keywords import extract_keywords
 from analysis.ai_model import predict_win, predict_score
 from analysis.elo_rating import calculate_elo
-
+from analysis.team_stats import team_attack_power, recent_form
+from analysis.simulator import simulate_game
 
 st.set_page_config(
     page_title="롯데 AI 야구 플랫폼",
@@ -31,21 +32,49 @@ menu = st.sidebar.selectbox(
 
 if menu=="홈":
 
-    st.header("AI 경기 예측")
+    st.header("오늘 경기 AI 분석")
 
-    win = predict_win()
+    try:
 
-    st.metric("승리 확률",f"{win*100:.1f}%")
+        schedule = pd.read_csv("data/schedule.csv")
 
-    score = predict_score()
+        today = schedule.head(1)
 
-    st.subheader("예상 스코어")
+        home = today.iloc[0]["home"]
+        away = today.iloc[0]["away"]
 
-    st.write(score)
+        st.subheader(f"{away} vs {home}")
+
+        a_attack = team_attack_power(away)
+        b_attack = team_attack_power(home)
+
+        sim = simulate_game(a_attack,b_attack)
+
+        col1,col2 = st.columns(2)
+
+        col1.metric(
+            away+" 승률",
+            f"{sim['A_win']*100:.1f}%"
+        )
+
+        col2.metric(
+            home+" 승률",
+            f"{sim['B_win']*100:.1f}%"
+        )
+
+        st.subheader("예상 스코어")
+
+        st.write(
+            f"{away} {sim['A_score']:.1f} : {home} {sim['B_score']:.1f}"
+        )
+
+    except:
+
+        st.write("경기 데이터 없음")
 
     elo = calculate_elo()
 
-    st.metric("전력지수(ELO)",elo)
+    st.metric("롯데 전력지수(ELO)",elo)
 
 
 # 뉴스
