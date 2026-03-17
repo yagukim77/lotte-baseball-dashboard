@@ -1,22 +1,21 @@
 import pandas as pd
-import datetime
 import os
 
-today = datetime.date.today()
-
-data = [
-    {
-        "date": today,
-        "home": "롯데",
-        "away": "두산",
-        "stadium": "사직"
-    }
+games = [
+("2026-03-20","롯데","LG"),
+("2026-03-21","롯데","LG"),
+("2026-03-22","롯데","LG"),
+("2026-03-23","롯데","NC"),
+("2026-03-24","롯데","NC")
 ]
 
-df = pd.DataFrame(data)
+df = pd.DataFrame(
+    games,
+    columns=["date","team","opponent"]
+)
 
-os.makedirs("data", exist_ok=True)
+os.makedirs("data",exist_ok=True)
 
-df.to_csv("data/schedule.csv", index=False)
+df.to_csv("data/schedule.csv",index=False)
 
-print("경기 일정 저장")
+print("schedule updated")
