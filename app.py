@@ -22,6 +22,7 @@ menu = st.sidebar.selectbox(
         "KBO 순위",
         "선수 OPS",
         "최근 경기",
+        "경기 일정",
         "AI 분석"
     ]
 )
@@ -142,6 +143,21 @@ elif menu=="최근 경기":
 
         st.write("경기 데이터 없음")
 
+
+# 경기 일정
+elif menu == "경기 일정":
+
+    st.header("롯데 경기 일정")
+
+    try:
+
+        df = pd.read_csv("data/schedule.csv")
+
+        st.dataframe(df)
+
+    except:
+
+        st.write("일정 데이터 없음")
 
 # AI 분석
 
