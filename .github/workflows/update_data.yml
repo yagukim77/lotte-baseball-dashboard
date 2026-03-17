@@ -47,6 +47,10 @@ jobs:
       run: |
         python crawlers/games_crawler.py
 
+    - name: Run Schedule_Crawler
+      run: |
+        python crawlers/schedule_crawler.py
+
     - name: Commit files
       run: |
         git config --global user.name "github-actions"
