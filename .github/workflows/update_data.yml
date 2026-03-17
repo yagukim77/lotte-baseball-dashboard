@@ -38,6 +38,7 @@ jobs:
     - name: Run Players Crawler
       run: |
         python crawlers/players_crawler.py
+        python crawlers/kbo_players.py
 
     - name: Run Schedule Crawler
       run: |
@@ -46,6 +47,11 @@ jobs:
     - name: Run Games Crawler
       run: |
         python crawlers/games_crawler.py
+        python crawlers/kbo_games.py
+
+    - name: Run Team Stats Crawler
+      run: |
+        python crawlers/kbo_team_stats.py           
 
     - name: Run OPS crawler
       run: |
