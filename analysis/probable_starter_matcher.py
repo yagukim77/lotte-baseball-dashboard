@@ -13,14 +13,16 @@ TEAM_ALIASES = {
     "한화": ["한화"],
 }
 
+
 def normalize_team(team: str) -> str:
     if not team:
         return ""
     t = str(team).strip()
-    for key, values in TEAM_ALIASES.items():
-        if t in values:
+    for key, vals in TEAM_ALIASES.items():
+        if t in vals:
             return key
     return t
+
 
 def get_probable_starters(home: str, away: str):
     try:
@@ -31,13 +33,17 @@ def get_probable_starters(home: str, away: str):
     if df.empty:
         return "", ""
 
+    if not {"home", "away"}.issubset(df.columns):
+        return "", ""
+
     df["home"] = df["home"].astype(str).apply(normalize_team)
     df["away"] = df["away"].astype(str).apply(normalize_team)
 
-    home_n = normalize_team(home)
-    away_n = normalize_team(away)
+    target = df[
+        (df["home"] == normalize_team(home)) &
+        (df["away"] == normalize_team(away))
+    ]
 
-    target = df[(df["home"] == home_n) & (df["away"] == away_n)]
     if target.empty:
         return "", ""
 
