@@ -56,6 +56,7 @@ jobs:
               python crawlers/kbo_standings.py
               python crawlers/kbo_probable_starters.py || true
               python crawlers/news_crawler.py || true
+              python crawlers/naver_kbo_fetch.py
 
       - name: Create missing CSVs if absent
         run: |
