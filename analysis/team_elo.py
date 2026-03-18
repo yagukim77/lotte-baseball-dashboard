@@ -1,61 +1,68 @@
 import pandas as pd
 
 BASE_ELO = 1500
+K_FACTOR = 20
 
-def calculate_team_elo_table() -> pd.DataFrame:
+def expected(a, b):
+    return 1 / (1 + 10 ** ((b - a) / 400))
+
+def calculate_team_elo():
     try:
         df = pd.read_csv("data/games.csv").copy()
     except Exception:
-        return pd.DataFrame(columns=["team", "elo", "wins", "losses"])
+        return pd.DataFrame(columns=["team", "elo"])
 
-    required = {"home", "away", "runs", "allowed"}
+    if df.empty:
+        return pd.DataFrame(columns=["team", "elo"])
+
+    required = {"home", "away", "runs", "allowed", "result"}
     if not required.issubset(df.columns):
-        return pd.DataFrame(columns=["team", "elo", "wins", "losses"])
+        return pd.DataFrame(columns=["team", "elo"])
 
-    teams = sorted(set(df["home"].dropna().astype(str)).union(set(df["away"].dropna().astype(str))))
-    ratings = {team: BASE_ELO for team in teams}
-    record = {team: {"wins": 0, "losses": 0} for team in teams}
+    teams = sorted(set(df["home"].dropna().tolist() + df["away"].dropna().tolist()))
+    elo = {team: BASE_ELO for team in teams}
 
     for _, row in df.iterrows():
-        home = str(row["home"])
-        away = str(row["away"])
-        try:
-            home_runs = float(row["runs"])
-            away_runs = float(row["allowed"])
-        except Exception:
-            continue
+        home = row["home"]
+        away = row["away"]
 
-        if home not in ratings or away not in ratings:
-            continue
-        if home_runs == away_runs:
-            continue
+        if home not in elo:
+            elo[home] = BASE_ELO
+        if away not in elo:
+            elo[away] = BASE_ELO
 
-        home_elo = ratings[home]
-        away_elo = ratings[away]
-        expected_home = 1 / (1 + 10 ** ((away_elo - home_elo) / 400))
-        actual_home = 1.0 if home_runs > away_runs else 0.0
-        k = 20
+        home_elo = elo[home]
+        away_elo = elo[away]
 
-        ratings[home] = round(home_elo + k * (actual_home - expected_home), 2)
-        ratings[away] = round(away_elo + k * ((1 - actual_home) - (1 - expected_home)), 2)
+        home_exp = expected(home_elo, away_elo)
+        away_exp = expected(away_elo, home_elo)
 
-        if actual_home == 1.0:
-            record[home]["wins"] += 1
-            record[away]["losses"] += 1
+        home_runs = float(row["runs"]) if pd.notna(row["runs"]) else 0
+        away_runs = float(row["allowed"]) if pd.notna(row["allowed"]) else 0
+
+        if home_runs > away_runs:
+            home_score = 1
+            away_score = 0
+        elif home_runs < away_runs:
+            home_score = 0
+            away_score = 1
         else:
-            record[away]["wins"] += 1
-            record[home]["losses"] += 1
+            home_score = 0.5
+            away_score = 0.5
 
-    out = pd.DataFrame([
-        {"team": team, "elo": ratings[team], "wins": record[team]["wins"], "losses": record[team]["losses"]}
-        for team in teams
-    ])
-    return out.sort_values(["elo", "wins"], ascending=[False, False]).reset_index(drop=True)
+        elo[home] = round(home_elo + K_FACTOR * (home_score - home_exp), 2)
+        elo[away] = round(away_elo + K_FACTOR * (away_score - away_exp), 2)
 
+    out = pd.DataFrame({
+        "team": list(elo.keys()),
+        "elo": list(elo.values())
+    }).sort_values("elo", ascending=False)
 
-def get_team_elo(team: str, default: float = BASE_ELO) -> float:
-    table = calculate_team_elo_table()
-    target = table[table["team"].astype(str) == str(team)]
+    return out
+
+def get_team_elo(team_name: str) -> float:
+    elo_df = calculate_team_elo()
+    target = elo_df[elo_df["team"] == team_name]
     if target.empty:
-        return default
+        return BASE_ELO
     return float(target.iloc[0]["elo"])
