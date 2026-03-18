@@ -1,58 +1,52 @@
+import os
 import pandas as pd
-import requests
-from bs4 import BeautifulSoup
 
-URL = "https://www.koreabaseball.com/Record/Player/HitterBasic/Basic1.aspx"
-HEADERS = {"User-Agent": "Mozilla/5.0"}
+CANDIDATE_URLS = [
+    "https://www.koreabaseball.com/Record/Player/HitterBasic/Basic1.aspx?sort=OPS_RT",
+    "https://www.koreabaseball.com/Record/Player/HitterBasic/Basic1.aspx?sort=HIT_CN",
+    "https://www.koreabaseball.com/Record/Player/HitterBasic/Basic1.aspx?sort=HR_CN",
+    "https://www.koreabaseball.com/Record/Player/HitterBasic/Basic1.aspx?sort=RBI_CN",
+]
 
-EXPECTED_COLS = ["선수명", "팀명", "AVG", "HR", "RBI", "OPS"]
+EXPECTED = {"선수명", "팀명", "AVG", "HR", "RBI", "OPS"}
 
 
-def _clean_num(value, default=0.0):
+def _clean_num(v, default=0):
     try:
-        s = str(value).strip().replace(",", "")
-        if s in ["-", "", "nan", "None"]:
+        s = str(v).strip().replace(",", "")
+        if s in ["", "-", "nan", "None"]:
             return default
         return float(s)
     except Exception:
         return default
 
 
-def _find_table_with_columns(html: str):
-    try:
-        tables = pd.read_html(html)
-    except Exception:
-        return None
+def _find_table():
+    for url in CANDIDATE_URLS:
+        try:
+            tables = pd.read_html(url, flavor="lxml")
+        except Exception:
+            continue
 
-    for df in tables:
-        cols = [str(c).strip() for c in df.columns]
-        if all(col in cols for col in EXPECTED_COLS):
-            return df.copy()
+        for df in tables:
+            cols = {str(c).strip() for c in df.columns}
+            if EXPECTED.issubset(cols):
+                return df.copy()
 
     return None
 
 
 def crawl_players():
-    res = requests.get(URL, headers=HEADERS, timeout=20)
-    res.raise_for_status()
-    html = res.text
+    os.makedirs("data", exist_ok=True)
 
-    df = _find_table_with_columns(html)
+    df = _find_table()
 
     if df is None:
-        soup = BeautifulSoup(html, "html.parser")
-        page_text = soup.get_text(" ", strip=True)
-
-        if "타자" not in page_text or "선수명" not in page_text:
-            print("hitter page loaded but record text not found")
-        else:
-            print("hitter page loaded, but html table parsing failed")
-
-        empty_df = pd.DataFrame(
-            columns=["player", "team", "avg", "hr", "rbi", "ops"]
-        )
-        empty_df.to_csv("data/players_stats.csv", index=False, encoding="utf-8-sig")
-        print("saved empty: data/players_stats.csv")
+        print("players table parsing failed")
+        if not os.path.exists("data/players_stats.csv"):
+            pd.DataFrame(columns=["player", "team", "avg", "hr", "rbi", "ops"]).to_csv(
+                "data/players_stats.csv", index=False, encoding="utf-8-sig"
+            )
         return
 
     df = df.rename(columns={
@@ -64,8 +58,7 @@ def crawl_players():
         "OPS": "ops",
     })
 
-    keep_cols = ["player", "team", "avg", "hr", "rbi", "ops"]
-    df = df[keep_cols].copy()
+    df = df[["player", "team", "avg", "hr", "rbi", "ops"]].copy()
 
     df["player"] = df["player"].astype(str).str.strip()
     df["team"] = df["team"].astype(str).str.strip()
@@ -74,7 +67,8 @@ def crawl_players():
     df["rbi"] = df["rbi"].apply(lambda x: int(_clean_num(x, 0)))
     df["ops"] = df["ops"].apply(lambda x: _clean_num(x, 0.0))
 
-    df = df[df["player"].notna() & (df["player"] != "")]
+    df = df.dropna(subset=["player", "team"])
+    df = df[df["player"] != ""]
     df = df.drop_duplicates(subset=["player", "team"])
 
     df.to_csv("data/players_stats.csv", index=False, encoding="utf-8-sig")
