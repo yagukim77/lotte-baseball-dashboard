@@ -8,13 +8,13 @@ from analysis.elo_rating import calculate_elo
 from analysis.team_stats import team_attack_power, recent_form
 from analysis.game_simulator import simulate_game
 from analysis.live_win_model import pregame_win_prob, live_win_prob
-from analysis.starter_model import adjust_attack_by_starter
-from analysis.war_model import calculate_batter_war, calculate_team_war
-from analysis.live_graph import build_live_win_history
-from analysis.team_elo import calculate_team_elo_table, get_team_elo
-from analysis.lineup_model import estimate_lineup_strength, get_default_lineup
-from analysis.highlight_finder import build_highlight_queries, build_youtube_search_url
-from crawlers.live_score import get_lotte_live_game
+from services.data_loader import safe_read_csv
+
+try:
+    from crawlers.live_score import get_lotte_live_game
+except Exception:
+    def get_lotte_live_game():
+        return None
 
 st.set_page_config(page_title="롯데 AI 야구 플랫폼", layout="wide")
 
