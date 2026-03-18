@@ -1,61 +1,42 @@
+import os
 import re
-from datetime import datetime
-import pandas as pd
 import requests
+import pandas as pd
 from bs4 import BeautifulSoup
+from datetime import datetime
 
 URL = "https://www.koreabaseball.com/Schedule/GameCenter/Main.aspx"
 HEADERS = {"User-Agent": "Mozilla/5.0"}
-TEAMS = ["롯데", "LG", "두산", "KIA", "삼성", "한화", "NC", "SSG", "키움", "KT"]
+TEAM_PATTERN = r"(롯데|두산|NC|SSG|삼성|LG|KIA|한화|KT|키움)"
 
 
-def normalize_text(text: str) -> str:
-    return re.sub(r"\s+", " ", str(text)).strip()
+def crawl_probable_starters():
+    os.makedirs("data", exist_ok=True)
 
-
-def looks_like_player(token: str) -> bool:
-    token = str(token).strip()
-    if not token or token in TEAMS:
-        return False
-    if any(ch.isdigit() for ch in token):
-        return False
-    return 1 < len(token) <= 6
-
-
-def crawl_probable_starters() -> pd.DataFrame:
     res = requests.get(URL, headers=HEADERS, timeout=20)
     res.raise_for_status()
     soup = BeautifulSoup(res.text, "html.parser")
-    text = normalize_text(soup.get_text(" ", strip=True))
+    text = soup.get_text("\n", strip=True)
 
-    games = []
-    pattern = re.compile(r"(롯데|LG|두산|KIA|삼성|한화|NC|SSG|키움|KT)\s+(롯데|LG|두산|KIA|삼성|한화|NC|SSG|키움|KT)")
-    for m in pattern.finditer(text):
-        away, home = m.group(1), m.group(2)
-        nearby = text[max(0, m.start()-80):m.end()+120]
+    today = datetime.now().strftime("%Y-%m-%d")
+    teams = re.findall(TEAM_PATTERN, text)
 
-        names = []
-        for token in re.findall(r"[가-힣A-Za-z]{2,6}", nearby):
-            if looks_like_player(token):
-                names.append(token)
-        names = [n for n in names if n not in [away, home]]
-
-        away_starter = names[0] if len(names) >= 1 else ""
-        home_starter = names[1] if len(names) >= 2 else ""
-
-        games.append({
-            "date": datetime.now().strftime("%Y-%m-%d"),
+    rows = []
+    for i in range(0, len(teams) - 1, 2):
+        away = teams[i]
+        home = teams[i + 1]
+        rows.append({
+            "date": today,
             "away": away,
             "home": home,
-            "away_starter": away_starter,
-            "home_starter": home_starter,
+            "away_starter": "",
+            "home_starter": "",
         })
 
-    df = pd.DataFrame(games).drop_duplicates(subset=["date", "away", "home"])
-    return df
+    out = pd.DataFrame(rows).drop_duplicates()
+    out.to_csv("data/probable_starters.csv", index=False, encoding="utf-8-sig")
+    print(f"saved: data/probable_starters.csv ({len(out)} rows)")
 
 
 if __name__ == "__main__":
-    df = crawl_probable_starters()
-    df.to_csv("data/probable_starters.csv", index=False, encoding="utf-8-sig")
-    print("saved: data/probable_starters.csv")
+    crawl_probable_starters()
