@@ -1,101 +1,37 @@
 import os
-import re
-import requests
 import pandas as pd
-from bs4 import BeautifulSoup
-from datetime import datetime
-
-URL = "https://www.koreabaseball.com/Schedule/GameCenter/Main.aspx"
-HEADERS = {"User-Agent": "Mozilla/5.0"}
-TEAM_LIST = ["롯데", "LG", "두산", "KIA", "삼성", "한화", "NC", "SSG", "키움", "KT"]
-
-
-def normalize_text(text: str) -> str:
-    return re.sub(r"\s+", " ", str(text)).strip()
-
-
-def extract_games_from_text(text: str):
-    text = normalize_text(text)
-    teams = "|".join(TEAM_LIST)
-
-    status_candidates = [
-        "우천취소", "우천중단", "취소", "경기전", "예정", "종료",
-        "1회", "2회", "3회", "4회", "5회", "6회", "7회", "8회", "9회", "연장"
-    ]
-
-    games = []
-    team_matches = re.finditer(rf"({teams})\s+({teams})", text)
-
-    for m in team_matches:
-        away = m.group(1)
-        home = m.group(2)
-        nearby = text[m.start():m.start() + 160]
-
-        score_match = re.search(r"(\d+)\s*[:：]\s*(\d+)", nearby)
-
-        status = "경기전"
-        for s in status_candidates:
-            if s in nearby:
-                status = s
-                break
-
-        away_score = 0
-        home_score = 0
-        if score_match:
-            away_score = int(score_match.group(1))
-            home_score = int(score_match.group(2))
-
-        games.append({
-            "date": datetime.now().strftime("%Y-%m-%d"),
-            "away": away,
-            "home": home,
-            "away_score": away_score,
-            "home_score": home_score,
-            "status": status,
-        })
-
-    uniq = []
-    seen = set()
-    for g in games:
-        key = (g["away"], g["home"])
-        if key in seen:
-            continue
-        seen.add(key)
-        uniq.append(g)
-
-    return uniq
-
 
 def crawl_live_scores():
     os.makedirs("data", exist_ok=True)
 
-    res = requests.get(URL, headers=HEADERS, timeout=20)
-    res.raise_for_status()
+    if not os.path.exists("data/schedule.csv"):
+        pd.DataFrame(columns=["date", "away", "home", "away_score", "home_score", "status"]).to_csv(
+            "data/live_score.csv", index=False, encoding="utf-8-sig"
+        )
+        print("saved empty: data/live_score.csv")
+        return pd.DataFrame()
 
-    soup = BeautifulSoup(res.text, "html.parser")
-    text = soup.get_text(" ", strip=True)
+    df = pd.read_csv("data/schedule.csv")
+    if df.empty:
+        df = pd.DataFrame(columns=["date", "away", "home", "away_score", "home_score", "status"])
 
-    games = extract_games_from_text(text)
-    df = pd.DataFrame(games)
-    df.to_csv("data/live_score.csv", index=False, encoding="utf-8-sig")
-    print(f"saved: data/live_score.csv ({len(df)} rows)")
-    return df
-
+    cols = ["date", "away", "home", "away_score", "home_score", "status"]
+    out = df[cols].copy() if all(c in df.columns for c in cols) else pd.DataFrame(columns=cols)
+    out.to_csv("data/live_score.csv", index=False, encoding="utf-8-sig")
+    print(f"saved: data/live_score.csv ({len(out)} rows)")
+    return out
 
 def get_lotte_live_game():
     try:
         df = crawl_live_scores()
         if df.empty:
             return None
-
         target = df[(df["away"] == "롯데") | (df["home"] == "롯데")]
         if target.empty:
             return None
-
         return target.iloc[0].to_dict()
     except Exception:
         return None
-
 
 if __name__ == "__main__":
     crawl_live_scores()
