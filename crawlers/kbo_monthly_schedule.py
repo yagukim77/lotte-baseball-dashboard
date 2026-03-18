@@ -1,69 +1,102 @@
+import os
 import re
-from datetime import datetime
 import requests
 import pandas as pd
 from bs4 import BeautifulSoup
+from datetime import datetime
 
-MONTHLY_URL = "https://www.koreabaseball.com/Schedule/Schedule.aspx"
+BASE_URL = "https://www.koreabaseball.com/Schedule/Schedule.aspx"
 HEADERS = {"User-Agent": "Mozilla/5.0"}
+TEAM_PATTERN = r"(롯데|두산|NC|SSG|삼성|LG|KIA|한화|KT|키움)"
+STADIUM_PATTERN = r"(사직|잠실|문학|대구|수원|광주|대전|창원|고척|울산|포항|청주)"
 
 
 def detect_season_type(text: str) -> str:
-    text = str(text)
-    if "시범" in text:
+    if "시범경기" in text:
         return "시범경기"
-    if any(x in text for x in ["포스트", "준플", "플레이오프", "한국시리즈", "와일드카드"]):
+    if "포스트시즌" in text or "한국시리즈" in text or "플레이오프" in text or "준플레이오프" in text or "와일드카드" in text:
         return "가을야구"
     return "정규시즌"
 
 
-def parse_month_schedule(year: int, month: int) -> pd.DataFrame:
-    params = {"seriesId": 0, "date": f"{year}-{month:02d}-01"}
-    res = requests.get(MONTHLY_URL, params=params, headers=HEADERS, timeout=20)
+def parse_month(year: int, month: int):
+    params = {"date": f"{year}-{month:02d}-01"}
+    res = requests.get(BASE_URL, params=params, headers=HEADERS, timeout=20)
     res.raise_for_status()
-    soup = BeautifulSoup(res.text, "html.parser")
+    html = res.text
+
+    soup = BeautifulSoup(html, "html.parser")
     text = soup.get_text(" ", strip=True)
     season_type = detect_season_type(text)
+
     rows = []
-    teams = "롯데|LG|두산|KIA|삼성|한화|NC|SSG|키움|KT"
-    for tr in soup.select("tr"):
-        row_text = re.sub(r"\s+", " ", tr.get_text(" ", strip=True))
-        tm = re.findall(rf"({teams})", row_text)
-        if len(tm) < 2:
-            continue
-        date_match = re.search(rf"{year}[./-](\d{{2}})[./-](\d{{2}})", row_text)
-        if not date_match:
-            continue
-        time_match = re.search(r"(\d{1,2}:\d{2})", row_text)
-        rows.append({
-            "date": f"{year}-{int(date_match.group(1)):02d}-{int(date_match.group(2)):02d}",
-            "away": tm[0],
-            "home": tm[1],
-            "time": time_match.group(1) if time_match else "",
-            "season_type": season_type,
-        })
+    try:
+        tables = pd.read_html(html, flavor="lxml")
+    except Exception:
+        tables = []
+
+    for df in tables:
+        for _, row in df.iterrows():
+            row_text = " ".join([str(x) for x in row.tolist()])
+
+            teams = re.findall(TEAM_PATTERN, row_text)
+            if len(teams) < 2:
+                continue
+
+            date_match = re.search(rf"{year}\.(\d{{2}})\.(\d{{2}})", row_text)
+            if date_match:
+                game_date = f"{year}-{date_match.group(1)}-{date_match.group(2)}"
+            else:
+                game_date = f"{year}-{month:02d}-01"
+
+            stadium_match = re.search(STADIUM_PATTERN, row_text)
+            time_match = re.search(r"(\d{1,2}:\d{2})", row_text)
+            score_match = re.search(r"(\d+)\s*[:：]\s*(\d+)", row_text)
+
+            status = ""
+            if "우천취소" in row_text:
+                status = "우천취소"
+            elif "취소" in row_text:
+                status = "취소"
+            elif score_match:
+                status = "종료"
+            else:
+                status = "예정"
+
+            rows.append({
+                "date": game_date,
+                "away": teams[0],
+                "home": teams[1],
+                "time": time_match.group(1) if time_match else "",
+                "stadium": stadium_match.group(1) if stadium_match else "",
+                "status": status,
+                "season_type": season_type,
+            })
+
     return pd.DataFrame(rows).drop_duplicates()
 
 
-def build_schedule_for_months() -> pd.DataFrame:
-    now = datetime.now()
-    targets = [(now.year, now.month)]
-    if now.month == 12:
-        targets.append((now.year + 1, 1))
-    else:
-        targets.append((now.year, now.month + 1))
+def build_year_schedule():
+    os.makedirs("data", exist_ok=True)
+    year = datetime.now().year
+
     frames = []
-    for y, m in targets:
+    for month in range(1, 13):
         try:
-            frames.append(parse_month_schedule(y, m))
+            df = parse_month(year, month)
+            if not df.empty:
+                frames.append(df)
         except Exception as e:
-            print(f"monthly schedule parse failed: {y}-{m:02d} / {e}")
-    if not frames:
-        return pd.DataFrame(columns=["date", "away", "home", "time", "season_type"])
-    return pd.concat(frames, ignore_index=True).drop_duplicates()
+            print(f"month parse failed: {year}-{month:02d} / {e}")
+
+    if frames:
+        out = pd.concat(frames, ignore_index=True).drop_duplicates()
+    else:
+        out = pd.DataFrame(columns=["date", "away", "home", "time", "stadium", "status", "season_type"])
+
+    out.to_csv("data/monthly_schedule.csv", index=False, encoding="utf-8-sig")
+    print(f"saved: data/monthly_schedule.csv ({len(out)} rows)")
 
 
 if __name__ == "__main__":
-    df = build_schedule_for_months()
-    df.to_csv("data/monthly_schedule.csv", index=False, encoding="utf-8-sig")
-    print("saved: data/monthly_schedule.csv")
+    build_year_schedule()
