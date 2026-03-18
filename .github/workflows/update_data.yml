@@ -42,16 +42,15 @@ jobs:
         run: |
           set +e
 
-          python crawlers/kbo_players.py
-          python crawlers/kbo_pitchers.py
-          python crawlers/kbo_monthly_schedule.py || true
-          python crawlers/kbo_schedule.py || true
-          python crawlers/kbo_games.py || true
-          python crawlers/kbo_probable_starters.py || true
-          python crawlers/live_score.py || true
-          python crawlers/kbo_team_stats.py || true
-          python crawlers/kbo_standings.py || true
-          python crawlers/news_crawler.py || true
+              python crawlers/kbo_players.py
+              python crawlers/kbo_pitchers.py
+              python crawlers/kbo_schedule.py
+              python crawlers/live_score.py
+              python crawlers/kbo_games.py
+              python crawlers/kbo_team_stats.py
+              python crawlers/kbo_standings.py
+              python crawlers/kbo_probable_starters.py || true
+              python crawlers/news_crawler.py || true
 
       - name: Create missing CSVs if absent
         run: |
