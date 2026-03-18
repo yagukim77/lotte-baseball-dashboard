@@ -3,130 +3,131 @@ import re
 import requests
 import pandas as pd
 from bs4 import BeautifulSoup
-from datetime import datetime
 
-URL = "https://eng.koreabaseball.com/"
 HEADERS = {"User-Agent": "Mozilla/5.0"}
 
+NAVER_URLS = [
+    "https://m.sports.naver.com/kbaseball/record/kbo?seasonCode=2025&tab=pitcher",
+    "https://m.sports.naver.com/kbaseball/record/kbo?tab=pitcher",
+]
+
+KBO_URLS = [
+    "https://www.koreabaseball.com/Record/Player/PitcherBasic/Basic1.aspx?sort=ERA_RT",
+    "https://www.koreabaseball.com/Record/Player/PitcherBasic/Basic1.aspx?sort=W_CN",
+]
+
 TEAM_MAP = {
-    "LOTTE": "롯데",
-    "DOOSAN": "두산",
-    "NC": "NC",
-    "SSG": "SSG",
-    "SAMSUNG": "삼성",
-    "LG": "LG",
-    "KIA": "KIA",
-    "HANWHA": "한화",
-    "KT": "KT",
-    "KIWOOM": "키움",
+    "LOTTE": "롯데", "DOOSAN": "두산", "NC": "NC", "SSG": "SSG",
+    "SAMSUNG": "삼성", "LG": "LG", "KIA": "KIA", "HANWHA": "한화",
+    "KT": "KT", "KIWOOM": "키움",
 }
 
-STADIUM_MAP = {
-    "SAJIK": "사직",
-    "CHANGWON": "창원",
-    "SUWON": "수원",
-    "DAEJEON": "대전",
-    "MUNHAK": "문학",
-    "DAEGU": "대구",
-    "JAMSIL": "잠실",
-    "GWANGJU": "광주",
-    "GOCHUK": "고척",
-}
+KBO_EXPECTED = {"선수명", "팀명", "ERA", "G", "W", "L", "SV"}
 
-def detect_season_type():
-    # 지금 시점은 시범경기, 정규시즌 개막 후엔 영문 메인도 해당 일정으로 바뀜
-    now = datetime.now()
-    if now.month == 3 and now.day < 28:
-        return "시범경기"
-    return "정규시즌"
 
-def crawl_schedule():
-    os.makedirs("data", exist_ok=True)
+def _clean_num(v, default=0):
+    try:
+        s = str(v).strip().replace(",", "")
+        if s in ["", "-", "nan", "None"]:
+            return default
+        return float(s)
+    except Exception:
+        return default
 
-    res = requests.get(URL, headers=HEADERS, timeout=20)
-    res.raise_for_status()
-    soup = BeautifulSoup(res.text, "html.parser")
+
+def _parse_naver_text(html: str) -> pd.DataFrame:
+    soup = BeautifulSoup(html, "html.parser")
     lines = [x.strip() for x in soup.get_text("\n", strip=True).splitlines() if x.strip()]
 
-    season_type = detect_season_type()
-    current_date = None
     rows = []
+    for line in lines:
+        team_match = re.search(r"\b(LG|KIA|NC|LOTTE|DOOSAN|SSG|SAMSUNG|HANWHA|KT|KIWOOM)\b", line)
+        era_match = re.search(r"\b\d+\.\d{2}\b", line)
 
-    i = 0
-    while i < len(lines):
-        line = lines[i]
-
-        date_m = re.match(r"^(MON|TUE|WED|THU|FRI|SAT|SUN)\s+([A-Z]{3})\s+(\d{1,2})$", line)
-        if date_m:
-            month_map = {
-                "JAN": 1, "FEB": 2, "MAR": 3, "APR": 4, "MAY": 5, "JUN": 6,
-                "JUL": 7, "AUG": 8, "SEP": 9, "OCT": 10, "NOV": 11, "DEC": 12
-            }
-            mm = month_map[date_m.group(2)]
-            dd = int(date_m.group(3))
-            yyyy = datetime.now().year
-            current_date = f"{yyyy}-{mm:02d}-{dd:02d}"
-            i += 1
+        if not team_match or not era_match:
             continue
 
-        if line in TEAM_MAP and i + 2 < len(lines):
-            away = TEAM_MAP.get(line, line)
-            middle = lines[i + 1]
-            third = lines[i + 2]
+        team_en = team_match.group(1)
+        era = float(era_match.group(0))
+        before_team = line.split(team_en)[0].strip()
+        player = re.sub(r"^\d+\s*", "", before_team).strip()
+        if not player:
+            continue
 
-            if middle == "VS":
-                # 예정 경기: third = "LOTTE SAJIK 13:00"
-                parts = third.split()
-                if len(parts) >= 2:
-                    home = TEAM_MAP.get(parts[0], parts[0])
-                    stadium = STADIUM_MAP.get(parts[1], parts[1])
-                    game_time = parts[2] if len(parts) >= 3 else ""
-                    rows.append({
-                        "date": current_date,
-                        "away": away,
-                        "home": home,
-                        "stadium": stadium,
-                        "time": game_time,
-                        "away_score": None,
-                        "home_score": None,
-                        "result": "",
-                        "status": "예정",
-                        "season_type": season_type,
-                    })
-                    i += 3
-                    continue
+        nums = re.findall(r"\b\d+\b", line)
+        game = int(nums[1]) if len(nums) >= 2 else 0
+        win = int(nums[2]) if len(nums) >= 3 else 0
+        lose = int(nums[3]) if len(nums) >= 4 else 0
+        save = int(nums[4]) if len(nums) >= 5 else 0
 
-            if re.match(r"^\d+:\d+$", middle):
-                # 결과 경기: third = "NC CHANGWON"
-                parts = third.split()
-                if len(parts) >= 2:
-                    home = TEAM_MAP.get(parts[0], parts[0])
-                    stadium = STADIUM_MAP.get(parts[1], parts[1])
+        rows.append({
+            "player": player,
+            "team": TEAM_MAP.get(team_en, team_en),
+            "era": era,
+            "game": game,
+            "win": win,
+            "lose": lose,
+            "save": save,
+        })
 
-                    away_score = int(middle.split(":")[0])
-                    home_score = int(middle.split(":")[1])
+    return pd.DataFrame(rows).drop_duplicates(subset=["player", "team"])
 
-                    result = "W" if home_score > away_score else ("L" if home_score < away_score else "D")
 
-                    rows.append({
-                        "date": current_date,
-                        "away": away,
-                        "home": home,
-                        "stadium": stadium,
-                        "time": "",
-                        "away_score": away_score,
-                        "home_score": home_score,
-                        "result": result,
-                        "status": "종료",
-                        "season_type": season_type,
-                    })
-                    i += 3
-                    continue
-        i += 1
+def _parse_kbo_tables() -> pd.DataFrame:
+    for url in KBO_URLS:
+        try:
+            tables = pd.read_html(url, flavor="lxml")
+        except Exception:
+            continue
 
-    df = pd.DataFrame(rows).drop_duplicates()
-    df.to_csv("data/schedule.csv", index=False, encoding="utf-8-sig")
-    print(f"saved: data/schedule.csv ({len(df)} rows)")
+        for df in tables:
+            cols = {str(c).strip() for c in df.columns}
+            if KBO_EXPECTED.issubset(cols):
+                df = df.rename(columns={
+                    "선수명": "player",
+                    "팀명": "team",
+                    "ERA": "era",
+                    "G": "game",
+                    "W": "win",
+                    "L": "lose",
+                    "SV": "save",
+                })
+                df = df[["player", "team", "era", "game", "win", "lose", "save"]].copy()
+                df["player"] = df["player"].astype(str).str.strip()
+                df["team"] = df["team"].astype(str).str.strip()
+                df["era"] = df["era"].apply(lambda x: _clean_num(x, 4.50))
+                df["game"] = df["game"].apply(lambda x: int(_clean_num(x, 0)))
+                df["win"] = df["win"].apply(lambda x: int(_clean_num(x, 0)))
+                df["lose"] = df["lose"].apply(lambda x: int(_clean_num(x, 0)))
+                df["save"] = df["save"].apply(lambda x: int(_clean_num(x, 0)))
+                return df.drop_duplicates(subset=["player", "team"])
+    return pd.DataFrame()
+
+
+def crawl_pitchers():
+    os.makedirs("data", exist_ok=True)
+
+    df = pd.DataFrame()
+
+    for url in NAVER_URLS:
+        try:
+            res = requests.get(url, headers=HEADERS, timeout=20)
+            if res.ok and res.text:
+                df = _parse_naver_text(res.text)
+                if not df.empty:
+                    break
+        except Exception:
+            pass
+
+    if df.empty:
+        df = _parse_kbo_tables()
+
+    if df.empty:
+        df = pd.DataFrame(columns=["player", "team", "era", "game", "win", "lose", "save"])
+
+    df.to_csv("data/pitcher_stats.csv", index=False, encoding="utf-8-sig")
+    print(f"saved: data/pitcher_stats.csv ({len(df)} rows)")
+
 
 if __name__ == "__main__":
-    crawl_schedule()
+    crawl_pitchers()
