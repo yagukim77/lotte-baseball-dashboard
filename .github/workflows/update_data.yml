@@ -24,7 +24,7 @@ jobs:
         run: |
           python crawlers/kbo_players.py
           python crawlers/kbo_pitchers.py
-          python crawlers/kbo_standings.py
+          python crawlers/standings_kbo_crawler.py
           python crawlers/kbo_games.py
           python crawlers/kbo_schedule.py
           python crawlers/kbo_team_stats.py
@@ -32,7 +32,7 @@ jobs:
           python crawlers/kbo_probable_starters.py
           python crawlers/live_score.py
           python crawlers/news_crawler.py
-          python crawlers/youtube_highlight.py||true
+          python crawlers/youtube_highlight.py || true
 
       - name: Commit updated data
         run: |
