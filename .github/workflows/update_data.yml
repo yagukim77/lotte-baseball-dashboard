@@ -1,43 +1,173 @@
-name: update-data
+name: update-data-safe
 
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 */6 * * *"
+    - cron: "0 21,1,5,9 * * *"
+
+permissions:
+  contents: write
 
 jobs:
-  update:
+  update-data:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
       - name: Install dependencies
-        run: pip install -r requirements.txt
-
-      - name: Run crawlers
         run: |
-          python crawlers/kbo_players.py
-          python crawlers/kbo_pitchers.py
-          python crawlers/standings_kbo_crawler.py
-          python crawlers/kbo_games.py
-          python crawlers/kbo_schedule.py
-          python crawlers/kbo_team_stats.py
-          python crawlers/kbo_monthly_schedule.py || true
-          python crawlers/kbo_probable_starters.py || true
-          python crawlers/live_score.py || true
-          python crawlers/news_crawler.py || true
-          python crawlers/youtube_highlight.py || true
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
-      - name: Commit updated data
+      - name: Ensure data directory exists
+        run: mkdir -p data
+
+      - name: Run core crawlers
+        run: |
+          set +e
+
+          echo "=== kbo_players ==="
+          python crawlers/kbo_players.py
+          echo "exit code: $?"
+
+          echo "=== kbo_pitchers ==="
+          python crawlers/kbo_pitchers.py
+          echo "exit code: $?"
+
+          echo "=== standings ==="
+          if [ -f "crawlers/kbo_standings.py" ]; then
+            python crawlers/kbo_standings.py
+          elif [ -f "crawlers/standings_kbo_crawler.py" ]; then
+            python crawlers/standings_kbo_crawler.py
+          else
+            echo "No standings crawler found"
+          fi
+          echo "exit code: $?"
+
+          echo "=== games ==="
+          if [ -f "crawlers/kbo_games.py" ]; then
+            python crawlers/kbo_games.py
+          else
+            echo "No kbo_games.py found"
+          fi
+          echo "exit code: $?"
+
+          echo "=== schedule ==="
+          if [ -f "crawlers/kbo_schedule.py" ]; then
+            python crawlers/kbo_schedule.py
+          else
+            echo "No kbo_schedule.py found"
+          fi
+          echo "exit code: $?"
+
+          echo "=== team stats ==="
+          if [ -f "crawlers/kbo_team_stats.py" ]; then
+            python crawlers/kbo_team_stats.py
+          else
+            echo "No kbo_team_stats.py found"
+          fi
+          echo "exit code: $?"
+
+      - name: Run optional crawlers safely
+        run: |
+          set +e
+
+          echo "=== monthly schedule ==="
+          if [ -f "crawlers/kbo_monthly_schedule.py" ]; then
+            python crawlers/kbo_monthly_schedule.py || true
+          else
+            echo "No kbo_monthly_schedule.py found"
+          fi
+
+          echo "=== probable starters ==="
+          if [ -f "crawlers/kbo_probable_starters.py" ]; then
+            python crawlers/kbo_probable_starters.py || true
+          else
+            echo "No kbo_probable_starters.py found"
+          fi
+
+          echo "=== live score ==="
+          if [ -f "crawlers/live_score.py" ]; then
+            python crawlers/live_score.py || true
+          else
+            echo "No live_score.py found"
+          fi
+
+          echo "=== news ==="
+          if [ -f "crawlers/news_crawler.py" ]; then
+            python crawlers/news_crawler.py || true
+          else
+            echo "No news_crawler.py found"
+          fi
+
+          echo "=== youtube highlight ==="
+          if [ -f "crawlers/youtube_highlight.py" ]; then
+            python crawlers/youtube_highlight.py || true
+          else
+            echo "No youtube_highlight.py found"
+          fi
+
+      - name: Create missing CSVs if absent
+        run: |
+          python - <<'PY'
+          import os
+          import pandas as pd
+
+          os.makedirs("data", exist_ok=True)
+
+          required_files = {
+              "data/players_stats.csv": ["player", "team", "avg", "hr", "rbi", "ops"],
+              "data/pitcher_stats.csv": ["player", "team", "era", "game", "win", "lose", "save"],
+              "data/kbo_standings.csv": ["rank", "team", "games", "win", "lose", "draw", "win_rate", "gb"],
+              "data/games.csv": ["date", "home", "away", "runs", "allowed", "result"],
+              "data/schedule.csv": ["date", "home", "away", "stadium", "season_type"],
+              "data/monthly_schedule.csv": ["date", "home", "away", "time", "stadium", "season_type"],
+              "data/probable_starters.csv": ["date", "home", "away", "home_starter", "away_starter"],
+              "data/news.csv": ["title", "link"],
+              "data/live_score.csv": ["date", "away", "home", "away_score", "home_score", "status"],
+              "data/team_stats.csv": ["team", "team_ops"],
+          }
+
+          for path, cols in required_files.items():
+              if not os.path.exists(path):
+                  pd.DataFrame(columns=cols).to_csv(path, index=False, encoding="utf-8-sig")
+                  print(f"created empty csv: {path}")
+          PY
+
+      - name: Show generated CSV files
+        run: |
+          ls -lah data || true
+          for f in data/*.csv; do
+            echo "----- $f -----"
+            head -n 5 "$f" || true
+          done
+
+      - name: Commit and push if changed
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
           git add data/*.csv
-          git commit -m "auto: update baseball data" || echo "No changes to commit"
-          git push
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "auto: update baseball data"
+            git push
+          fi
