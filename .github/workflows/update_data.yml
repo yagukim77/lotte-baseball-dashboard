@@ -5,12 +5,19 @@ on:
   schedule:
     - cron: "0 */6 * * *"
 
+permissions:
+  contents: write
+
 jobs:
   update:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -18,7 +25,8 @@ jobs:
           python-version: "3.11"
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: |
+          pip install -r requirements.txt
 
       - name: Crawl players
         run: python crawlers/kbo_players.py
@@ -60,10 +68,34 @@ jobs:
         run: python crawlers/news_crawler.py
         continue-on-error: true
 
-      - name: Commit updated data
+      - name: Show changed files
+        run: |
+          git status --short
+          ls -lah data || true
+
+      - name: Commit changes
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
           git add data/*.csv || true
-          git commit -m "auto: update baseball data" || echo "No changes to commit"
-          git push
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+
+          git commit -m "auto: update baseball data"
+
+      - name: Rebase and push
+        run: |
+          BRANCH="${GITHUB_REF_NAME:-main}"
+
+          git fetch origin "$BRANCH"
+          git pull --rebase origin "$BRANCH" || {
+            echo "Rebase failed. Abort and stop safely."
+            git rebase --abort || true
+            exit 1
+          }
+
+          git push origin HEAD:"$BRANCH"
