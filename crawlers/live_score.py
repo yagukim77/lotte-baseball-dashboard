@@ -1,3 +1,4 @@
+import os
 import re
 import requests
 import pandas as pd
@@ -6,17 +7,19 @@ from datetime import datetime
 
 URL = "https://www.koreabaseball.com/Schedule/GameCenter/Main.aspx"
 HEADERS = {"User-Agent": "Mozilla/5.0"}
-
 TEAM_LIST = ["롯데", "LG", "두산", "KIA", "삼성", "한화", "NC", "SSG", "키움", "KT"]
+
 
 def normalize_text(text: str) -> str:
     return re.sub(r"\s+", " ", str(text)).strip()
 
+
 def extract_games_from_text(text: str):
     text = normalize_text(text)
     teams = "|".join(TEAM_LIST)
+
     status_candidates = [
-        "경기전", "예정", "취소", "우천취소", "종료",
+        "우천취소", "우천중단", "취소", "경기전", "예정", "종료",
         "1회", "2회", "3회", "4회", "5회", "6회", "7회", "8회", "9회", "연장"
     ]
 
@@ -26,8 +29,8 @@ def extract_games_from_text(text: str):
     for m in team_matches:
         away = m.group(1)
         home = m.group(2)
+        nearby = text[m.start():m.start() + 160]
 
-        nearby = text[m.start():m.start() + 120]
         score_match = re.search(r"(\d+)\s*[:：]\s*(\d+)", nearby)
 
         status = "경기전"
@@ -62,7 +65,10 @@ def extract_games_from_text(text: str):
 
     return uniq
 
-def crawl_live_scores() -> pd.DataFrame:
+
+def crawl_live_scores():
+    os.makedirs("data", exist_ok=True)
+
     res = requests.get(URL, headers=HEADERS, timeout=20)
     res.raise_for_status()
 
@@ -70,7 +76,11 @@ def crawl_live_scores() -> pd.DataFrame:
     text = soup.get_text(" ", strip=True)
 
     games = extract_games_from_text(text)
-    return pd.DataFrame(games)
+    df = pd.DataFrame(games)
+    df.to_csv("data/live_score.csv", index=False, encoding="utf-8-sig")
+    print(f"saved: data/live_score.csv ({len(df)} rows)")
+    return df
+
 
 def get_lotte_live_game():
     try:
@@ -86,7 +96,6 @@ def get_lotte_live_game():
     except Exception:
         return None
 
+
 if __name__ == "__main__":
-    df = crawl_live_scores()
-    df.to_csv("data/live_score.csv", index=False, encoding="utf-8-sig")
-    print("saved: data/live_score.csv")
+    crawl_live_scores()
