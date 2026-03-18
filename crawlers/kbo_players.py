@@ -5,11 +5,9 @@ CANDIDATE_URLS = [
     "https://www.koreabaseball.com/Record/Player/HitterBasic/Basic1.aspx?sort=OPS_RT",
     "https://www.koreabaseball.com/Record/Player/HitterBasic/Basic1.aspx?sort=HIT_CN",
     "https://www.koreabaseball.com/Record/Player/HitterBasic/Basic1.aspx?sort=HR_CN",
-    "https://www.koreabaseball.com/Record/Player/HitterBasic/Basic1.aspx?sort=RBI_CN",
 ]
 
 EXPECTED = {"선수명", "팀명", "AVG", "HR", "RBI", "OPS"}
-
 
 def _clean_num(v, default=0):
     try:
@@ -20,21 +18,17 @@ def _clean_num(v, default=0):
     except Exception:
         return default
 
-
 def _find_table():
     for url in CANDIDATE_URLS:
         try:
             tables = pd.read_html(url, flavor="lxml")
-        except Exception:
-            continue
-
-        for df in tables:
-            cols = {str(c).strip() for c in df.columns}
-            if EXPECTED.issubset(cols):
-                return df.copy()
-
+            for df in tables:
+                cols = {str(c).strip() for c in df.columns}
+                if EXPECTED.issubset(cols):
+                    return df.copy()
+        except Exception as e:
+            print(f"players parse failed: {url} / {e}")
     return None
-
 
 def crawl_players():
     os.makedirs("data", exist_ok=True)
@@ -71,9 +65,14 @@ def crawl_players():
     df = df[df["player"] != ""]
     df = df.drop_duplicates(subset=["player", "team"])
 
+    if len(df) == 0:
+        print("players parsed but empty; keep old file if exists")
+        if not os.path.exists("data/players_stats.csv"):
+            df.to_csv("data/players_stats.csv", index=False, encoding="utf-8-sig")
+        return
+
     df.to_csv("data/players_stats.csv", index=False, encoding="utf-8-sig")
     print(f"saved: data/players_stats.csv ({len(df)} rows)")
-
 
 if __name__ == "__main__":
     crawl_players()
