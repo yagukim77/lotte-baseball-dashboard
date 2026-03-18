@@ -35,6 +35,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Install Playwright
+        run: |
+          pip install playwright
+          playwright install chromium
+
       - name: Ensure data directory exists
         run: mkdir -p data
 
