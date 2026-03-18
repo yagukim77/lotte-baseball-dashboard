@@ -94,6 +94,7 @@ menu = st.sidebar.selectbox(
         "홈",
         "실시간 경기 AI",
         "오늘 경기 브리핑",
+        "롯데 뉴스",
         "KBO 순위",
         "선수 OPS",
         "WAR 분석",
@@ -262,6 +263,32 @@ elif menu == "오늘 경기 브리핑":
         b.metric(f"{home} 최근폼", pred["home_form"]["strength_score"])
         c.metric(f"{away} 선발 ERA", pred["away_starter_era"])
         d.metric(f"{home} 선발 ERA", pred["home_starter_era"])
+
+
+elif menu == "뉴스 분석":
+    st.header("롯데 뉴스")
+    news_df = load_csv("data/news.csv")
+
+    if news_df.empty:
+        st.info("news.csv 데이터가 없습니다.")
+    else:
+        render_df(news_df)
+
+        if "title" in news_df.columns:
+            keyword_df = (
+                news_df["title"]
+                .astype(str)
+                .str.extractall(r"([가-힣A-Za-z0-9]{2,})")[0]
+                .value_counts()
+                .head(15)
+                .reset_index()
+            )
+            keyword_df.columns = ["keyword", "count"]
+
+            if not keyword_df.empty:
+                fig = px.bar(keyword_df, x="keyword", y="count", title="뉴스 키워드")
+                st.plotly_chart(fig, use_container_width=True)
+
 
 elif menu == "KBO 순위":
     st.header("KBO 순위")
