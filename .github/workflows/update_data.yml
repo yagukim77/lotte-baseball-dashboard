@@ -32,7 +32,7 @@ jobs:
           python crawlers/kbo_probable_starters.py
           python crawlers/live_score.py
           python crawlers/news_crawler.py
-          python crawlers/youtube_highlight.py
+          python crawlers/youtube_highlight.py||true
 
       - name: Commit updated data
         run: |
