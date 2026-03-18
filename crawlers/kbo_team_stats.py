@@ -7,13 +7,6 @@ def build_team_stats():
     players = pd.read_csv("data/players_stats.csv") if os.path.exists("data/players_stats.csv") else pd.DataFrame()
     pitchers = pd.read_csv("data/pitcher_stats.csv") if os.path.exists("data/pitcher_stats.csv") else pd.DataFrame()
 
-    if players.empty and pitchers.empty:
-        pd.DataFrame(columns=["team", "avg", "era", "team_ops"]).to_csv(
-            "data/team_stats.csv", index=False, encoding="utf-8-sig"
-        )
-        print("saved empty: data/team_stats.csv")
-        return
-
     out = pd.DataFrame()
 
     if not players.empty and {"team", "avg", "ops"}.issubset(players.columns):
@@ -25,6 +18,9 @@ def build_team_stats():
         pitchers["era"] = pd.to_numeric(pitchers["era"], errors="coerce").fillna(4.50)
         pitch = pitchers.groupby("team", as_index=False).agg(era=("era", "mean"))
         out = pitch if out.empty else out.merge(pitch, on="team", how="outer")
+
+    if out.empty:
+        out = pd.DataFrame(columns=["team", "avg", "era", "team_ops"])
 
     out.to_csv("data/team_stats.csv", index=False, encoding="utf-8-sig")
     print(f"saved: data/team_stats.csv ({len(out)} rows)")
