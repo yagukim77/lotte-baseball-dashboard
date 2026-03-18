@@ -38,90 +38,20 @@ jobs:
       - name: Ensure data directory exists
         run: mkdir -p data
 
-      - name: Run core crawlers
+      - name: Run crawlers
         run: |
           set +e
 
-          echo "=== kbo_players ==="
           python crawlers/kbo_players.py
-          echo "exit code: $?"
-
-          echo "=== kbo_pitchers ==="
           python crawlers/kbo_pitchers.py
-          echo "exit code: $?"
-
-          echo "=== standings ==="
-          if [ -f "crawlers/kbo_standings.py" ]; then
-            python crawlers/kbo_standings.py
-          elif [ -f "crawlers/standings_kbo_crawler.py" ]; then
-            python crawlers/standings_kbo_crawler.py
-          else
-            echo "No standings crawler found"
-          fi
-          echo "exit code: $?"
-
-          echo "=== games ==="
-          if [ -f "crawlers/kbo_games.py" ]; then
-            python crawlers/kbo_games.py
-          else
-            echo "No kbo_games.py found"
-          fi
-          echo "exit code: $?"
-
-          echo "=== schedule ==="
-          if [ -f "crawlers/kbo_schedule.py" ]; then
-            python crawlers/kbo_schedule.py
-          else
-            echo "No kbo_schedule.py found"
-          fi
-          echo "exit code: $?"
-
-          echo "=== team stats ==="
-          if [ -f "crawlers/kbo_team_stats.py" ]; then
-            python crawlers/kbo_team_stats.py
-          else
-            echo "No kbo_team_stats.py found"
-          fi
-          echo "exit code: $?"
-
-      - name: Run optional crawlers safely
-        run: |
-          set +e
-
-          echo "=== monthly schedule ==="
-          if [ -f "crawlers/kbo_monthly_schedule.py" ]; then
-            python crawlers/kbo_monthly_schedule.py || true
-          else
-            echo "No kbo_monthly_schedule.py found"
-          fi
-
-          echo "=== probable starters ==="
-          if [ -f "crawlers/kbo_probable_starters.py" ]; then
-            python crawlers/kbo_probable_starters.py || true
-          else
-            echo "No kbo_probable_starters.py found"
-          fi
-
-          echo "=== live score ==="
-          if [ -f "crawlers/live_score.py" ]; then
-            python crawlers/live_score.py || true
-          else
-            echo "No live_score.py found"
-          fi
-
-          echo "=== news ==="
-          if [ -f "crawlers/news_crawler.py" ]; then
-            python crawlers/news_crawler.py || true
-          else
-            echo "No news_crawler.py found"
-          fi
-
-          echo "=== youtube highlight ==="
-          if [ -f "crawlers/youtube_highlight.py" ]; then
-            python crawlers/youtube_highlight.py || true
-          else
-            echo "No youtube_highlight.py found"
-          fi
+          python crawlers/kbo_monthly_schedule.py || true
+          python crawlers/kbo_schedule.py || true
+          python crawlers/kbo_games.py || true
+          python crawlers/kbo_probable_starters.py || true
+          python crawlers/live_score.py || true
+          python crawlers/kbo_team_stats.py || true
+          python crawlers/kbo_standings.py || true
+          python crawlers/news_crawler.py || true
 
       - name: Create missing CSVs if absent
         run: |
@@ -134,14 +64,14 @@ jobs:
           required_files = {
               "data/players_stats.csv": ["player", "team", "avg", "hr", "rbi", "ops"],
               "data/pitcher_stats.csv": ["player", "team", "era", "game", "win", "lose", "save"],
-              "data/kbo_standings.csv": ["rank", "team", "games", "win", "lose", "draw", "win_rate", "gb"],
+              "data/kbo_standings.csv": ["rank", "team", "games", "win", "lose", "draw", "win_rate", "gb", "avg", "era"],
               "data/games.csv": ["date", "home", "away", "runs", "allowed", "result"],
-              "data/schedule.csv": ["date", "home", "away", "stadium", "season_type"],
-              "data/monthly_schedule.csv": ["date", "home", "away", "time", "stadium", "season_type"],
+              "data/schedule.csv": ["date", "home", "away", "stadium", "time", "away_score", "home_score", "result", "status", "season_type"],
+              "data/monthly_schedule.csv": ["date", "away", "home", "time", "stadium", "status", "season_type", "away_score", "home_score"],
               "data/probable_starters.csv": ["date", "home", "away", "home_starter", "away_starter"],
               "data/news.csv": ["title", "link"],
               "data/live_score.csv": ["date", "away", "home", "away_score", "home_score", "status"],
-              "data/team_stats.csv": ["team", "team_ops"],
+              "data/team_stats.csv": ["team", "avg", "era", "team_ops"],
           }
 
           for path, cols in required_files.items():
