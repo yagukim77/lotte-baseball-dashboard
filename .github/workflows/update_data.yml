@@ -5,19 +5,12 @@ on:
   schedule:
     - cron: "0 */6 * * *"
 
-permissions:
-  contents: write
-
 jobs:
   update:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          persist-credentials: true
+      - uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -25,81 +18,26 @@ jobs:
           python-version: "3.11"
 
       - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run crawlers
         run: |
-          pip install -r requirements.txt
+          python crawlers/kbo_players.py
+          python crawlers/kbo_pitchers.py
+          python crawlers/standings_kbo_crawler.py
+          python crawlers/kbo_games.py
+          python crawlers/kbo_schedule.py
+          python crawlers/kbo_team_stats.py
+          python crawlers/kbo_monthly_schedule.py || true
+          python crawlers/kbo_probable_starters.py || true
+          python crawlers/live_score.py || true
+          python crawlers/news_crawler.py || true
+          python crawlers/youtube_highlight.py || true
 
-      - name: Crawl players
-        run: python crawlers/kbo_players.py
-        continue-on-error: true
-
-      - name: Crawl pitchers
-        run: python crawlers/kbo_pitchers.py
-        continue-on-error: true
-
-      - name: Crawl standings
-        run: python crawlers/standings_kbo_crawler.py
-        continue-on-error: true
-
-      - name: Crawl games
-        run: python crawlers/kbo_games.py
-        continue-on-error: true
-
-      - name: Crawl schedule
-        run: python crawlers/kbo_schedule.py
-        continue-on-error: true
-
-      - name: Crawl team stats
-        run: python crawlers/kbo_team_stats.py
-        continue-on-error: true
-
-      - name: Crawl monthly schedule
-        run: python crawlers/kbo_monthly_schedule.py
-        continue-on-error: true
-
-      - name: Crawl probable starters
-        run: python crawlers/kbo_probable_starters.py
-        continue-on-error: true
-
-      - name: Crawl live score
-        run: python crawlers/live_score.py
-        continue-on-error: true
-
-      - name: Crawl news
-        run: python crawlers/news_crawler.py
-        continue-on-error: true
-
-      - name: Show changed files
-        run: |
-          git status --short
-          ls -lah data || true
-
-      - name: Commit changes
-        id: commit_step
+      - name: Commit updated data
         run: |
           git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com}"
-
-          git add data/*.csv || true
-
-          if git diff --cached --quiet; then
-            echo "changed=false" >> $GITHUB_OUTPUT
-            echo "No changes to commit"
-            exit 0
-          fi
-
-          git commit -m "auto: update baseball data"
-          echo "changed=true" >> $GITHUB_OUTPUT
-
-      - name: Rebase and push
-        if: steps.commit_step.outputs.changed == 'true'
-        run: |
-          BRANCH="${GITHUB_REF_NAME:-main}"
-
-          git fetch origin "$BRANCH"
-          git pull --rebase origin "$BRANCH" || {
-            echo "Rebase failed. Abort and stop safely."
-            git rebase --abort || true
-            exit 1
-          }
-
-          git push origin HEAD:"$BRANCH"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/*.csv
+          git commit -m "auto: update baseball data" || echo "No changes to commit"
+          git push
