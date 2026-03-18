@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import os
 
 from analysis.keywords import extract_keywords
 from analysis.ai_model import predict_win, predict_score
@@ -9,6 +10,12 @@ from analysis.team_stats import team_attack_power, recent_form
 from analysis.game_simulator import simulate_game
 from analysis.live_win_model import pregame_win_prob, live_win_prob
 from services.data_loader import safe_read_csv
+
+@st.cache_data(ttl=600)
+def load_csv(path):
+    if not os.path.exists(path):
+        return pd.DataFrame()
+    return pd.read_csv(path)
 
 try:
     from crawlers.live_score import get_lotte_live_game
