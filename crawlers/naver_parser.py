@@ -136,36 +136,50 @@ def parse_schedule():
     while i < len(lines):
         if lines[i] == "경기 시간":
             try:
-                game_time = lines[i + 1]
-                if lines[i + 2] != "경기장":
-                    i += 1
-                    continue
+                game_time = lines[i+1]
 
-                stadium = lines[i + 3]
-                status = lines[i + 4]
-                away = lines[i + 5]
-                home = lines[i + 6]
+                # 경기장 찾기
+                stadium = ""
+                status = ""
+                away = ""
+                home = ""
 
-                # 일정 파일 기준 실제 팀명만 허용
-                if away not in TEAM_SET or home not in TEAM_SET:
-                    i += 1
-                    continue
+                for j in range(i, i+15):
+                    if j >= len(lines): break
 
-                rows.append({
-                    "date": "",
-                    "time": game_time,
-                    "stadium": stadium,
-                    "status": status,
-                    "away": away,
-                    "home": home,
-                    "away_score": None,
-                    "home_score": None,
-                    "result": "",
-                    "season_type": "시범경기",
-                })
+                    if lines[j] == "경기장":
+                        stadium = lines[j+1]
 
-                # 한 경기 블록은 대체로 여기까지면 충분
-                i += 7
+                    elif lines[j] in ["예정", "종료", "취소"]:
+                        status = lines[j]
+
+                        # 상태 다음에서 팀 2개 찾기
+                        team_candidates = []
+                        for k in range(j+1, j+10):
+                            if k >= len(lines): break
+                            if lines[k] in TEAM_SET:
+                                team_candidates.append(lines[k])
+
+                        if len(team_candidates) >= 2:
+                            away = team_candidates[0]
+                            home = team_candidates[1]
+                        break
+
+                if away and home:
+                    rows.append({
+                        "date": "",
+                        "time": game_time,
+                        "stadium": stadium,
+                        "status": status,
+                        "away": away,
+                        "home": home,
+                        "away_score": None,
+                        "home_score": None,
+                        "result": "",
+                        "season_type": "시범경기",
+                    })
+
+                i += 10
                 continue
 
             except Exception:
@@ -173,15 +187,15 @@ def parse_schedule():
 
         i += 1
 
-    df = pd.DataFrame(rows).drop_duplicates(
-        subset=["away", "home", "time", "stadium", "status"]
-    )
+    df = pd.DataFrame(rows)
 
     write_csv(
         "schedule.csv",
         df,
-        ["date", "time", "stadium", "status", "away", "home", "away_score", "home_score", "result", "season_type"]
+        ["date","time","stadium","status","away","home",
+         "away_score","home_score","result","season_type"]
     )
+
     return df
 
 
