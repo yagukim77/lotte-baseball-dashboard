@@ -15,6 +15,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Show repo files before run
+        run: |
+          pwd
+          ls -lah
+          find . -maxdepth 3 -type f | sort
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -29,9 +35,25 @@ jobs:
       - name: Run debug render
         run: |
           python crawlers/debug_naver_render.py
+          echo "===== AFTER SCRIPT ====="
+          pwd
+          ls -lah
+          echo "===== DEBUG DIR ====="
+          ls -lah debug_artifacts || true
+          echo "===== FIND DEBUG FILES ====="
+          find . -maxdepth 3 -type f | sort | grep debug_artifacts || true
 
       - name: Upload debug artifacts
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: debug-artifacts
           path: debug_artifacts/
+
+      - name: Upload workflow logs helper
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: repo-file-snapshot
+          path: |
+            ./
