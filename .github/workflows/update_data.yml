@@ -43,6 +43,12 @@ jobs:
       - name: Ensure data directory exists
         run: mkdir -p data
 
+      - name: Debug render
+        run: python crawlers/debug_naver_render.py
+
+      - name: Parse data
+        run: python crawlers/naver_parser.py
+
       - name: Run crawlers
         run: |
           set +e
