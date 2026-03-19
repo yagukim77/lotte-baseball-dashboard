@@ -1,26 +1,63 @@
-name: update-data
+name: update-data-safe
+
 on:
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   run:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - run: |
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
           pip install -r requirements.txt
           playwright install chromium
 
-      - run: python crawlers/debug_naver_render.py
-      - run: python crawlers/naver_parser.py
+      - name: Render pages to text
+        run: python crawlers/debug_naver_render.py
 
-      - run: |
-          git config user.name "bot"
-          git config user.email "bot@test.com"
-          git add .
-          git commit -m "data update" || echo "no changes"
+      - name: Parse text to csv
+        run: python crawlers/naver_parser.py
+
+      - name: Validate csv row counts
+        run: |
+          python - << 'PY'
+          import os, pandas as pd
+          files = [
+              "data/players_stats.csv",
+              "data/pitcher_stats.csv",
+              "data/schedule.csv",
+              "data/games.csv",
+              "data/team_stats.csv",
+          ]
+          for f in files:
+              if os.path.exists(f):
+                  try:
+                      df = pd.read_csv(f)
+                      print(f"{f}: {len(df)} rows")
+                      if len(df) == 0:
+                          print(f"WARNING: {f} is empty")
+                  except Exception as e:
+                      print(f"ERROR reading {f}: {e}")
+              else:
+                  print(f"MISSING: {f}")
+          PY
+
+      - name: Commit updated data
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/*.csv debug_artifacts/*.txt || true
+          git commit -m "auto: update data" || echo "no changes"
           git push
