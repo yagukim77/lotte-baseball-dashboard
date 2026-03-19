@@ -30,8 +30,9 @@ jobs:
       - name: Parse text to csv
         run: python crawlers/naver_parser.py
 
-      - name: Validate csv row counts
+      - name: Show files in data
         run: |
+          ls -lah data || true
           python - << 'PY'
           import os, pandas as pd
           files = [
@@ -42,16 +43,16 @@ jobs:
               "data/team_stats.csv",
           ]
           for f in files:
+              print("-----", f, "-----")
               if os.path.exists(f):
                   try:
                       df = pd.read_csv(f)
-                      print(f"{f}: {len(df)} rows")
-                      if len(df) == 0:
-                          print(f"WARNING: {f} is empty")
+                      print("rows =", len(df))
+                      print(df.head(3).to_string())
                   except Exception as e:
-                      print(f"ERROR reading {f}: {e}")
+                      print("ERROR:", e)
               else:
-                  print(f"MISSING: {f}")
+                  print("MISSING")
           PY
 
       - name: Commit updated data
