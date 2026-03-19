@@ -1,0 +1,196 @@
+import os
+import re
+import pandas as pd
+
+DEBUG_DIR = "debug_artifacts"
+DATA_DIR = "data"
+
+def load_lines(name):
+    path = os.path.join(DEBUG_DIR, name)
+    if not os.path.exists(path):
+        return []
+    with open(path, encoding="utf-8") as f:
+        return [x.strip() for x in f.read().splitlines() if x.strip()]
+
+def save_if_nonempty(df, path, columns):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    if df is None or df.empty:
+        if not os.path.exists(path):
+            pd.DataFrame(columns=columns).to_csv(path, index=False, encoding="utf-8-sig")
+        return False
+    df.to_csv(path, index=False, encoding="utf-8-sig")
+    return True
+
+def parse_hitters():
+    lines = load_lines("hitter.txt")
+    rows = []
+    i = 0
+    while i < len(lines):
+        if lines[i] == "타율":
+            try:
+                name = lines[i - 2]
+                team = lines[i - 1]
+                if name in ["위", "-"] or team in ["타율", "경기", "KBO리그", "전체"]:
+                    i += 1
+                    continue
+                avg = float(lines[i + 1])
+
+                ops = None
+                hr = 0
+                rbi = 0
+                for j in range(i, min(i + 60, len(lines) - 1)):
+                    if lines[j] == "홈런":
+                        hr = int(re.sub(r"[^\d]", "", lines[j + 1]) or 0)
+                    elif lines[j] == "타점":
+                        rbi = int(re.sub(r"[^\d]", "", lines[j + 1]) or 0)
+                    elif lines[j] == "OPS":
+                        ops = float(lines[j + 1])
+                        break
+
+                if ops is None:
+                    i += 1
+                    continue
+
+                rows.append({
+                    "player": name,
+                    "team": team,
+                    "avg": avg,
+                    "hr": hr,
+                    "rbi": rbi,
+                    "ops": ops,
+                })
+                i += 30
+                continue
+            except Exception:
+                pass
+        i += 1
+
+    df = pd.DataFrame(rows).drop_duplicates(subset=["player", "team"])
+    save_if_nonempty(df, os.path.join(DATA_DIR, "players_stats.csv"), ["player", "team", "avg", "hr", "rbi", "ops"])
+    return df
+
+def parse_pitchers():
+    lines = load_lines("pitcher.txt")
+    rows = []
+    i = 0
+    while i < len(lines):
+        if lines[i] == "평균자책":
+            try:
+                name = lines[i - 2]
+                team = lines[i - 1]
+                if name in ["위", "-"] or team in ["평균자책", "경기", "KBO리그", "전체"]:
+                    i += 1
+                    continue
+                era = float(lines[i + 1])
+
+                game = 0
+                win = 0
+                lose = 0
+                save = 0
+                for j in range(i, min(i + 50, len(lines) - 1)):
+                    if lines[j] == "경기":
+                        game = int(re.sub(r"[^\d]", "", lines[j + 1]) or 0)
+                    elif lines[j] == "승":
+                        win = int(re.sub(r"[^\d]", "", lines[j + 1]) or 0)
+                    elif lines[j] == "패":
+                        lose = int(re.sub(r"[^\d]", "", lines[j + 1]) or 0)
+                    elif lines[j] == "세이브":
+                        save = int(re.sub(r"[^\d]", "", lines[j + 1]) or 0)
+                        break
+
+                rows.append({
+                    "player": name,
+                    "team": team,
+                    "era": era,
+                    "game": game,
+                    "win": win,
+                    "lose": lose,
+                    "save": save,
+                })
+                i += 25
+                continue
+            except Exception:
+                pass
+        i += 1
+
+    df = pd.DataFrame(rows).drop_duplicates(subset=["player", "team"])
+    save_if_nonempty(df, os.path.join(DATA_DIR, "pitcher_stats.csv"), ["player", "team", "era", "game", "win", "lose", "save"])
+    return df
+
+def parse_schedule():
+    lines = load_lines("schedule.txt")
+    rows = []
+    i = 0
+    while i < len(lines):
+        if lines[i] == "경기 시간":
+            try:
+                game_time = lines[i + 1]
+                stadium = lines[i + 3]
+                status = lines[i + 4]
+                away = lines[i + 5]
+                home = lines[i + 6]
+                rows.append({
+                    "date": "",
+                    "time": game_time,
+                    "stadium": stadium,
+                    "status": status,
+                    "away": away,
+                    "home": home,
+                    "away_score": None,
+                    "home_score": None,
+                    "result": "",
+                    "season_type": "시범경기",
+                })
+                i += 7
+                continue
+            except Exception:
+                pass
+        i += 1
+
+    df = pd.DataFrame(rows).drop_duplicates(subset=["away", "home", "time", "stadium", "status"])
+    save_if_nonempty(df, os.path.join(DATA_DIR, "schedule.csv"),
+                     ["date", "time", "stadium", "status", "away", "home", "away_score", "home_score", "result", "season_type"])
+    return df
+
+def build_games(schedule_df):
+    if schedule_df is None or schedule_df.empty:
+        save_if_nonempty(pd.DataFrame(columns=["date", "home", "away", "runs", "allowed", "result"]),
+                         os.path.join(DATA_DIR, "games.csv"),
+                         ["date", "home", "away", "runs", "allowed", "result"])
+        return pd.DataFrame()
+
+    ended = schedule_df[schedule_df["status"].astype(str).str.contains("종료", na=False)].copy()
+    if ended.empty:
+        save_if_nonempty(pd.DataFrame(columns=["date", "home", "away", "runs", "allowed", "result"]),
+                         os.path.join(DATA_DIR, "games.csv"),
+                         ["date", "home", "away", "runs", "allowed", "result"])
+        return pd.DataFrame()
+
+    ended["runs"] = pd.to_numeric(ended["home_score"], errors="coerce").fillna(0).astype(int)
+    ended["allowed"] = pd.to_numeric(ended["away_score"], errors="coerce").fillna(0).astype(int)
+    ended["result"] = ended.apply(lambda r: "W" if r["runs"] > r["allowed"] else ("L" if r["runs"] < r["allowed"] else "D"), axis=1)
+
+    out = ended[["date", "home", "away", "runs", "allowed", "result"]].copy()
+    save_if_nonempty(out, os.path.join(DATA_DIR, "games.csv"), ["date", "home", "away", "runs", "allowed", "result"])
+    return out
+
+def build_team_stats(players_df, pitchers_df):
+    out = pd.DataFrame()
+    if players_df is not None and not players_df.empty and {"team", "avg", "ops"}.issubset(players_df.columns):
+        hit = players_df.groupby("team", as_index=False).agg(avg=("avg", "mean"), team_ops=("ops", "mean"))
+        out = hit
+
+    if pitchers_df is not None and not pitchers_df.empty and {"team", "era"}.issubset(pitchers_df.columns):
+        pit = pitchers_df.groupby("team", as_index=False).agg(era=("era", "mean"))
+        out = pit if out.empty else out.merge(pit, on="team", how="outer")
+
+    save_if_nonempty(out, os.path.join(DATA_DIR, "team_stats.csv"), ["team", "avg", "era", "team_ops"])
+    return out
+
+if __name__ == "__main__":
+    os.makedirs(DATA_DIR, exist_ok=True)
+    hitters = parse_hitters()
+    pitchers = parse_pitchers()
+    schedule = parse_schedule()
+    build_games(schedule)
+    build_team_stats(hitters, pitchers)
