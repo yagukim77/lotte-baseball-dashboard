@@ -127,39 +127,26 @@ def parse_pitchers():
     write_csv("pitcher_stats.csv", df, ["player", "team", "era", "game", "win", "lose", "save"])
     return df
 
+
 def parse_schedule():
     lines = load_lines("schedule.txt")
     rows = []
     i = 0
+
     while i < len(lines):
         if lines[i] == "경기 시간":
             try:
-                game_time = lines[i+1]
-                stadium = lines[i+3]
-                status = lines[i+4]
+                game_time = lines[i + 1]
+                if lines[i + 2] != "경기장":
+                    i += 1
+                    continue
 
-                # 네이버 일정 텍스트 구조:
-                # 경기 시간 / 13:00 / 경기장 / 사직 / 예정(or 종료) / 두산 / 롯데 / 홈 / ...
-                # 종료 상태일 때 승/패가 팀 뒤에 붙어 나와서 홈팀은 +1 오프셋 필요
-                away = lines[i+5]
+                stadium = lines[i + 3]
+                status = lines[i + 4]
+                away = lines[i + 5]
+                home = lines[i + 6]
 
-                if i + 7 < len(lines) and lines[i+7] == "홈":
-                    home = lines[i+6]
-                    step = 8
-                elif i + 8 < len(lines) and lines[i+8] == "홈":
-                    # 종료 상태 + 승/패 끼어드는 경우
-                    home = lines[i+6]
-                    if lines[i+7] in {"승", "패", "무"}:
-                        step = 9
-                    else:
-                        home = lines[i+7]
-                        step = 9
-                else:
-                    # 가장 안전한 fallback
-                    possible = [x for x in lines[i+6:i+10] if x in TEAM_SET]
-                    home = possible[0] if possible else ""
-                    step = 10
-
+                # 일정 파일 기준 실제 팀명만 허용
                 if away not in TEAM_SET or home not in TEAM_SET:
                     i += 1
                     continue
@@ -176,14 +163,28 @@ def parse_schedule():
                     "result": "",
                     "season_type": "시범경기",
                 })
-                i += step
+
+                # 한 경기 블록은 대체로 여기까지면 충분
+                i += 7
                 continue
+
             except Exception:
                 pass
+
         i += 1
-    df = pd.DataFrame(rows).drop_duplicates(subset=["away", "home", "time", "stadium", "status"])
-    write_csv("schedule.csv", df, ["date", "time", "stadium", "status", "away", "home", "away_score", "home_score", "result", "season_type"])
+
+    df = pd.DataFrame(rows).drop_duplicates(
+        subset=["away", "home", "time", "stadium", "status"]
+    )
+
+    write_csv(
+        "schedule.csv",
+        df,
+        ["date", "time", "stadium", "status", "away", "home", "away_score", "home_score", "result", "season_type"]
+    )
     return df
+
+
 
 def build_games(schedule_df):
     cols = ["date", "home", "away", "runs", "allowed", "result"]
